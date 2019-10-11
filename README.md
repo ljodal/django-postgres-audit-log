@@ -53,7 +53,7 @@ To get started auditing your models there are a few steps you need to complete:
    from audit_log.decorators import audit_logged
    from django.db import models
 
-   @audit_logged
+   @audit_logged()
    class MyModel(models.Model):
        pass
    ``` 
@@ -62,3 +62,23 @@ To get started auditing your models there are a few steps you need to complete:
    from the base audit log model, plus a foreign key to the decorated model.
    You can access a model's audit log entries though `my_instance.audit_log`
    which will give you a normal QuerySet that you can filter as you like.
+
+
+4. Make migrations
+
+   ```sh
+   ./manage.py makemigrations
+   ```
+
+   This will not create a migration for the audit log model of `MyModel`.
+
+5. Migrate the database
+
+   ```sh
+   ./manage.py migrate
+   ```
+
+   This is where most of the magic happens. The schema editor of the custom
+   database wrapper will pick up that we are migrating a model that is an audit
+   log table for another model, and automagically install triggers on the table
+   being audited to ensure that any change is picked up and logged.
