@@ -1,0 +1,39 @@
+name: Linting
+
+on: [push]
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+     - name: Check out code
+       uses: actions/checkout@v1
+     - name: Set up Python
+       uses: actions/setup-python@v1
+       with:
+         python-version: 3.6
+     - name: Install dependencies
+       run: pip install -r requirements.txt
+     - name: Run black
+       uses: ljodal/python-actions/black@master
+       with:
+         github-token: ${{ secrets.GITHUB_TOKEN }}
+         max-errors: 0
+         paths: audit_log tests
+     - name: Run flake8
+       uses: ljodal/python-actions/flake8@feature/flake8
+       with:
+         github-token: ${{ secrets.GITHUB_TOKEN }}
+         max-errors: 0
+     - name: Run pylint
+       uses: ljodal/python-actions/pylint@feature/pylint
+       with:
+         github-token: ${{ secrets.GITHUB_TOKEN }}
+         max-errors: 0
+         paths: audit_log tests
+     - name: Run mypy
+       uses: ljodal/python-actions/mypy@tweak/mypy
+       with:
+         github-token: ${{ secrets.GITHUB_TOKEN }}
+         max-errors: 0
+         paths: audit_log tests
