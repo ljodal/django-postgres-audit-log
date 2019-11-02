@@ -1,13 +1,12 @@
 from unittest import mock
 
-import pytest
+import pytest  # type: ignore
 
 from audit_log.middleware import AuditLoggingMiddleware
 
-pytestmark = pytest.mark.django_db
 
-
-def test_middleware():
+@pytest.mark.usefixtures("db")  # type: ignore
+def test_middleware() -> None:
 
     # Initialize the middleware
     middleware = AuditLoggingMiddleware(mock.Mock())

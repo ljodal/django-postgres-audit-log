@@ -1,4 +1,4 @@
-import pytest
+import pytest  # type: ignore
 from django.conf import settings
 from django.db import connection
 
@@ -6,10 +6,9 @@ from audit_log.utils import create_temporary_table_sql, drop_temporary_table_sql
 
 from ..models import AuditLoggingContext
 
-pytestmark = pytest.mark.django_db
 
-
-def test_temporary_table_sql():
+@pytest.mark.usefixtures("db")  # type: ignore
+def test_temporary_table_sql() -> None:
 
     table_name = AuditLoggingContext._meta.db_table
 

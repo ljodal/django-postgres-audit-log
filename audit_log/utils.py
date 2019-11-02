@@ -61,7 +61,7 @@ def _column_sql(field: models.Field) -> str:
 
 
 @lru_cache(maxsize=4)
-def create_temporary_table_sql(model: Type[AuditLogEntryModel]) -> str:
+def create_temporary_table_sql(model: Type[models.Model]) -> str:
     """
     Get the SQL required to represent the given model in the database as a
     temporary table.
@@ -85,7 +85,8 @@ def create_temporary_table_sql(model: Type[AuditLogEntryModel]) -> str:
     return sql
 
 
-def drop_temporary_table_sql(model: Type[AuditLogEntryModel]) -> str:
+@lru_cache(maxsize=4)
+def drop_temporary_table_sql(model: Type[models.Model]) -> str:
     """
     Generate the SQL required to drop the temporary table for the given model.
     """
