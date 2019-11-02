@@ -10,6 +10,10 @@ if TYPE_CHECKING:
 
 
 class AuditLoggingBaseContextManager(models.Manager):
+    """
+    Manager for the AuditLoggingBaseContext model, with helpers to create various models.
+    """
+
     def create_from_request(self, request: HttpRequest) -> "AuditLoggingBaseContext":
         """
         Create audit logging context from the given HTTP request object.
@@ -27,6 +31,9 @@ class AuditLoggingBaseContextManager(models.Manager):
     def create_from_management_command(
         self, *, cls: Type[AuditLoggedCommand], args: List[Any], kwargs: Dict[str, Any]
     ) -> "AuditLoggingBaseContext":
+        """
+        Insert audit logging context data when a management command is run.
+        """
 
         return cast(
             "AuditLoggingBaseContext",
