@@ -125,9 +125,9 @@ STATIC_URL = "/static/"
 
 AUDIT_LOGGING_CONTEXT_MODEL = "tests.AuditLoggingContext"
 AUDIT_LOGGING_CONTEXT_TYPE_CHOICES = (
-    ("HTTP request", "http_request"),
-    ("Management command", "management_command"),
-    ("Celery task", "celery_task"),
+    ("HTTP request", "http-request"),
+    ("Management command", "management-command"),
+    ("Celery task", "celery-task"),
     ("Other", "other"),
 )
 AUDIT_LOGGING_LOG_ENTRY_CLASS = "audit_log.models.AuditLogEntry"

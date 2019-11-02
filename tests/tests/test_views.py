@@ -35,5 +35,5 @@ def test_view(django_user_model: Type[User], client: Client) -> None:
 
     audit_log = model.audit_logs.get()  # type: ignore
     assert audit_log.action == "INSERT"
-    assert audit_log.context_type == "http_request"
+    assert audit_log.context_type == "http-request"
     assert audit_log.performed_by == user
