@@ -46,6 +46,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "audit_log.middleware.AuditLoggingMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -76,7 +77,7 @@ WSGI_APPLICATION = "tests.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
+        "ENGINE": "audit_log.db.backend",
         "NAME": os.environ["POSTGRES_DB"],
         "USER": os.environ["POSTGRES_USER"],
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", None),
@@ -120,3 +121,10 @@ STATIC_URL = "/static/"
 
 
 AUDIT_LOGGING_CONTEXT_MODEL = "tests.AuditLoggingContext"
+AUDIT_LOGGING_CONTEXT_TYPE_CHOICES = (
+    ("HTTP request", "http_request"),
+    ("Management command", "management_command"),
+    ("Celery task", "celery_task"),
+    ("Other", "other"),
+)
+AUDIT_LOGGING_LOG_ENTRY_CLASS = "audit_log.models.AuditLogEntry"

@@ -1,6 +1,7 @@
 from django.db import models
 
-from audit_log import AuditLoggingBaseContext, audit_logged
+from audit_log import audit_logged
+from audit_log.models import AuditLoggingBaseContext
 
 
 class AuditLoggingContext(AuditLoggingBaseContext):

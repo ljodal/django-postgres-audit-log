@@ -5,6 +5,7 @@ from django.conf import settings
 from django.db import connection, models
 from django.http import HttpRequest, HttpResponse
 
+from .context_managers import audit_logging
 from .utils import create_temporary_table_sql, drop_temporary_table_sql
 
 
@@ -29,21 +30,16 @@ class AuditLoggingMiddleware:
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
 
-        # Create the temporary table and initialize it with the request context
-        sql, params = self.create_temporary_table_sql
-        with connection.cursor() as cursor:
-            cursor.execute(sql, params or None)
-
-            self.context_model.objects.create(
-                context_type="http_request",
-                context={},
-                user_id=getattr(request.user, "id", None),
-            )
-
-        try:
+        with audit_logging(
+            create_temporary_table_sql=self.create_temporary_table_sql,
+            drop_temporary_table_sql=self.drop_temporary_table_sql,
+            create_context=lambda: self.create_context(request),
+        ):
             return self.get_response(request)
-        finally:
-            # Remove the temporary table after the request has been handled
-            sql, params = self.drop_temporary_table_sql
-            with connection.cursor() as cursor:
-                cursor.execute(sql, params or None)
+
+    def create_context(self, request: HttpRequest) -> None:
+        """
+        Create context from the given request
+        """
+
+        self.context_model.objects.create_from_request(request)
