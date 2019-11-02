@@ -109,7 +109,7 @@ def create_audit_log_model(
 
     class_name = f"{for_model.__name__}AuditLog"
     foreign_key: models.ForeignKey = models.ForeignKey(
-        for_model, related_name="audit_logs", on_delete=models.PROTECT
+        for_model, related_name="audit_logs", null=True, on_delete=models.SET_NULL
     )
 
     # Convert class name from CamelCase to snake_case, regex taken from
@@ -172,7 +172,7 @@ def create_trigger_function_sql(
             -- Id of the inserted row, used to ensure exactly one row is inserted
             entry_id int;
         BEGIN
-            IF (TG_OP IN ('INSERT', 'DELETE')) THEN
+            IF (TG_OP = 'INSERT') THEN
                 INSERT INTO { entry_table_name } (
                     { fields }
                 ) SELECT
@@ -191,7 +191,6 @@ def create_trigger_function_sql(
                 INSERT INTO { entry_table_name } (
                     { fields }
                 ) SELECT
-                    NEW.id as { entry_model.get_fk_column() },
                     { context_fields },
                     TG_OP as action,
                     now() as at,
@@ -215,7 +214,23 @@ def create_trigger_function_sql(
                         WHERE
                             -- Only select rows that have actually changed
                             old_row.* IS DISTINCT FROM new_row.*
-                    ) as changes
+                    ) as changes,
+                    NEW.id as { entry_model.get_fk_column() }
+                -- We rely on this table being created by out Django middleware
+                FROM { context_table_name }
+                -- We return the id into the variable to make postgresql check
+                -- that exactly one row is inserted.
+                RETURNING id INTO STRICT entry_id;
+                RETURN NEW;
+            ELSIF (TG_OP = 'DELETE') THEN
+                INSERT INTO { entry_table_name } (
+                    { fields }
+                ) SELECT
+                    { context_fields },
+                    TG_OP as action,
+                    now() as at,
+                    to_jsonb(OLD.*) as changes,
+                    null as { entry_model.get_fk_column() }
                 -- We rely on this table being created by out Django middleware
                 FROM { context_table_name }
                 -- We return the id into the variable to make postgresql check
