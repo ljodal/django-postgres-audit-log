@@ -19,21 +19,22 @@ jobs:
        with:
          github-token: ${{ secrets.GITHUB_TOKEN }}
          max-errors: 0
-         paths: audit_log tests
+         paths: ./audit_log ./tests
      - name: Run flake8
        uses: ljodal/python-actions/flake8@feature/flake8
        with:
          github-token: ${{ secrets.GITHUB_TOKEN }}
          max-errors: 0
+         paths: ./audit_log ./tests
      - name: Run pylint
        uses: ljodal/python-actions/pylint@feature/pylint
        with:
          github-token: ${{ secrets.GITHUB_TOKEN }}
          max-errors: 0
-         paths: audit_log tests
+         paths: ./audit_log ./tests
      - name: Run mypy
        uses: ljodal/python-actions/mypy@tweak/mypy
        with:
          github-token: ${{ secrets.GITHUB_TOKEN }}
          max-errors: 0
-         paths: audit_log
+         paths: ./audit_log ./tests
