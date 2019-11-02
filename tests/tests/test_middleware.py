@@ -1,6 +1,6 @@
 from unittest import mock
 
-import pytest  # type: ignore
+import pytest
 
 from audit_log.middleware import AuditLoggingMiddleware
 

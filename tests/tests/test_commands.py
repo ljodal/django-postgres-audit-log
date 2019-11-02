@@ -1,4 +1,4 @@
-import pytest  # type: ignore
+import pytest
 from django.core import management
 
 from ..models import AuditLoggedModel
