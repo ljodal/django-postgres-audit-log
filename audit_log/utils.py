@@ -14,6 +14,8 @@ from django.db.backends.postgresql.base import (
 )
 from django.utils.module_loading import import_string
 
+from .types import AuditLogEntryModel
+
 
 def _column_sql(field: models.Field) -> str:
     """
@@ -59,7 +61,7 @@ def _column_sql(field: models.Field) -> str:
 
 
 @lru_cache(maxsize=4)
-def create_temporary_table_sql(model: models.Model) -> str:
+def create_temporary_table_sql(model: Type[AuditLogEntryModel]) -> str:
     """
     Get the SQL required to represent the given model in the database as a
     temporary table.
@@ -73,7 +75,9 @@ def create_temporary_table_sql(model: models.Model) -> str:
 
     # For each field, generate the required SQL to add that field to the table
     definition = ", ".join(
-        _column_sql(field) for field in model._meta.get_fields()  # noqa
+        _column_sql(field)
+        for field in model._meta.get_fields()  # noqa
+        if isinstance(field, models.Field)
     )
 
     sql = f'CREATE TEMPORARY TABLE "{model._meta.db_table}" ({definition})'
@@ -81,7 +85,7 @@ def create_temporary_table_sql(model: models.Model) -> str:
     return sql
 
 
-def drop_temporary_table_sql(model: models.Model) -> str:
+def drop_temporary_table_sql(model: Type[AuditLogEntryModel]) -> str:
     """
     Generate the SQL required to drop the temporary table for the given model.
     """
@@ -92,7 +96,9 @@ def drop_temporary_table_sql(model: models.Model) -> str:
     return f"DROP TABLE {model._meta.db_table}"
 
 
-def create_audit_log_model(*, for_model: Type[models.Model]) -> Type[models.Model]:
+def create_audit_log_model(
+    *, for_model: Type[models.Model]
+) -> Type[AuditLogEntryModel]:
     """
     Dynamically create a new Django model for the given model
     """
@@ -101,7 +107,7 @@ def create_audit_log_model(*, for_model: Type[models.Model]) -> Type[models.Mode
     # pylint: disable=protected-access
 
     class_name = f"{for_model.__name__}AuditLog"
-    foreign_key = models.ForeignKey(
+    foreign_key: models.ForeignKey = models.ForeignKey(
         for_model, related_name="audit_logs", on_delete=models.PROTECT
     )
 
@@ -120,11 +126,11 @@ def create_audit_log_model(*, for_model: Type[models.Model]) -> Type[models.Mode
         lambda cls: f"{cls._meta.db_table}_create_entry"  # noqa
     )
 
-    LogEntryBaseClass = import_string(settings.AUDIT_LOGGING_LOG_ENTRY_CLASS)
+    _log_entry_base_class = import_string(settings.AUDIT_LOGGING_LOG_ENTRY_CLASS)
 
     return type(
         class_name,
-        (LogEntryBaseClass,),
+        (_log_entry_base_class,),
         {
             "__module__": for_model.__module__,
             field_name: foreign_key,
@@ -136,7 +142,7 @@ def create_audit_log_model(*, for_model: Type[models.Model]) -> Type[models.Mode
 
 
 def create_trigger_function_sql(
-    *, entry_model: Type[models.Model], context_model: Type[models.Model],
+    *, entry_model: Type[AuditLogEntryModel], context_model: Type[models.Model],
 ) -> str:
     """
     Generate the SQL to create the function to log the SQL.
@@ -150,12 +156,12 @@ def create_trigger_function_sql(
     fields = ", ".join(
         field.column
         for field in entry_model._meta.get_fields()  # noqa
-        if not isinstance(field, models.AutoField)
+        if isinstance(field, models.Field) and not isinstance(field, models.AutoField)
     )
     context_fields = ", ".join(
         field.column
         for field in context_model._meta.get_fields()  # noqa
-        if not isinstance(field, models.AutoField)
+        if isinstance(field, models.Field) and not isinstance(field, models.AutoField)
     )
 
     return f"""
@@ -221,7 +227,7 @@ def create_trigger_function_sql(
         """
 
 
-def drop_trigger_function_sql(*, entry_model: Type[models.Model]) -> str:
+def drop_trigger_function_sql(*, entry_model: Type[AuditLogEntryModel]) -> str:
     """
     Create the SQL required to drop the trigger function for the given model
     """
@@ -229,7 +235,7 @@ def drop_trigger_function_sql(*, entry_model: Type[models.Model]) -> str:
     return f"DROP FUNCTION { entry_model.get_trigger_name() }"
 
 
-def create_triggers_sql(*, entry_model: Type[models.Model]) -> Sequence[str]:
+def create_triggers_sql(*, entry_model: Type[AuditLogEntryModel]) -> Sequence[str]:
     """
     Create the SQL requried to set up triggers for audit logging to the given
     audit log entry model.
@@ -267,7 +273,7 @@ def create_triggers_sql(*, entry_model: Type[models.Model]) -> Sequence[str]:
     return (insert_trigger, update_trigger, delete_trigger)
 
 
-def drop_triggers_sql(*, entry_model: Type[models.Model]) -> Sequence[str]:
+def drop_triggers_sql(*, entry_model: Type[AuditLogEntryModel]) -> Sequence[str]:
     """
     Generate the SQL required to remove the audit logging triggers for the
     given audit log entry model.

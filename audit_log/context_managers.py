@@ -1,7 +1,7 @@
 from contextlib import contextmanager
-from typing import Any, Callable, Dict, Type
+from typing import Any, Callable, Generator
 
-from django.db import connection, models
+from django.db import connection
 
 
 @contextmanager
@@ -10,7 +10,7 @@ def audit_logging(
     create_temporary_table_sql: str,
     drop_temporary_table_sql: str,
     create_context: Callable[[], Any],
-):
+) -> Generator[None, None, None]:
     with connection.cursor() as cursor:
         cursor.execute(create_temporary_table_sql)
 

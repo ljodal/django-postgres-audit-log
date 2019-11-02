@@ -1,20 +1,18 @@
 """
 This defines a custom SchemaEditor class with some extensions.
 """
+from typing import Any, Type, cast
 
 from django.apps import apps
 from django.conf import settings
+from django.db import models
 from django.db.backends.postgresql.schema import (
     DatabaseSchemaEditor as PostgreSQLSchemaEditor,
 )
 from django.utils.module_loading import import_string
 
-from .utils import (
-    create_temporary_table_sql,
-    create_trigger_function_sql,
-    create_triggers_sql,
-    drop_temporary_table_sql,
-)
+from .types import AuditLogEntryModel
+from .utils import create_trigger_function_sql, create_triggers_sql
 
 
 class SchemaEditor(PostgreSQLSchemaEditor):
@@ -25,7 +23,7 @@ class SchemaEditor(PostgreSQLSchemaEditor):
 
     # pylint: disable=abstract-method
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
         # Dynamically get the context model from settings
@@ -35,30 +33,14 @@ class SchemaEditor(PostgreSQLSchemaEditor):
             settings.AUDIT_LOGGING_LOG_ENTRY_CLASS
         )
 
-    def create_temporary_model(self, model):
-        """
-        Create a temporary table for the given model.
-        """
-
-        table_sql, params = create_temporary_table_sql(model)
-        self.connection.execute(table_sql, params or None)
-
-    def delete_temporary_model(self, model):
-        """
-        Drop a temporary table for the given model.
-        """
-
-        table_sql, params = drop_temporary_table_sql(model)
-        self.connection.execute(table_sql, params or None)
-
-    def create_model(self, model):
+    def create_model(self, model: Type[models.Model]) -> None:
 
         super().create_model(model)
 
         if issubclass(model, self._log_entry_base_class):
-            self._create_audit_logging_triggers(model)
+            self._create_audit_logging_triggers(cast(Type[AuditLogEntryModel], model))
 
-    def _create_audit_logging_triggers(self, model):
+    def _create_audit_logging_triggers(self, model: Type[AuditLogEntryModel]) -> None:
         """
         Add audit logging triggers for class
         """

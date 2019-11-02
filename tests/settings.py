@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 
 import os
+from typing import List
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,7 +26,7 @@ SECRET_KEY = "h-og3706lkap@u5bj(obav&xy&7j^hylf6=o2xfv3kwp5p5h2)"
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS: List[str] = []
 
 
 # Application definition
@@ -78,8 +79,8 @@ WSGI_APPLICATION = "tests.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "audit_log.db.backend",
-        "NAME": os.environ["POSTGRES_DB"],
-        "USER": os.environ["POSTGRES_USER"],
+        "NAME": os.environ.get("POSTGRES_DB", None),
+        "USER": os.environ.get("POSTGRES_USER", None),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", None),
         "HOST": os.environ.get("POSTGRES_HOST", None),
         "PORT": os.environ.get("POSTGRES_PORT", None),
@@ -92,7 +93,9 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+        "NAME": (
+            "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+        )
     },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},

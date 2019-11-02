@@ -1,6 +1,7 @@
 django~=2.2
 black==19.10b0
 mypy==0.740
+django-stubs
 flake8~=3.7
 flake8-bugbear~=19.8
 pylint~=2.4

@@ -2,7 +2,6 @@ from typing import Callable
 
 from django.apps import apps
 from django.conf import settings
-from django.db import connection, models
 from django.http import HttpRequest, HttpResponse
 
 from .context_managers import audit_logging

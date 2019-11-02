@@ -36,4 +36,4 @@ jobs:
        with:
          github-token: ${{ secrets.GITHUB_TOKEN }}
          max-errors: 0
-         paths: audit_log tests
+         paths: audit_log
