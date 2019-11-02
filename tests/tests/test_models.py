@@ -1,10 +1,8 @@
 import pytest  # type: ignore
 
-from audit_log.context_managers import audit_logging
 from audit_log.models import AuditLogEntry
-from audit_log.utils import create_temporary_table_sql, drop_temporary_table_sql
 
-from ..models import AuditLoggedModel, AuditLoggingContext
+from ..models import AuditLoggedModel
 
 # pylint: disable=no-member,invalid-name
 
