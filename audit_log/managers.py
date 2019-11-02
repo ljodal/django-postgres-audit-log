@@ -11,7 +11,8 @@ if TYPE_CHECKING:
 
 class AuditLoggingBaseContextManager(models.Manager):
     """
-    Manager for the AuditLoggingBaseContext model, with helpers to create various models.
+    Manager for the AuditLoggingBaseContext model, with helpers to create various
+    models.
     """
 
     def create_from_request(self, request: HttpRequest) -> "AuditLoggingBaseContext":
