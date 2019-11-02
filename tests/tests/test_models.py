@@ -10,6 +10,9 @@ from ..models import AuditLoggedModel, AuditLoggingContext
 
 
 def test_has_audit_log_defined() -> None:
+    """
+    Test that the audit logged model has an AuditLog attribute.
+    """
 
     assert hasattr(AuditLoggedModel, "AuditLog")
     assert issubclass(AuditLoggedModel.AuditLog, AuditLogEntry)  # type: ignore
@@ -17,12 +20,19 @@ def test_has_audit_log_defined() -> None:
 
 @pytest.mark.usefixtures("db")  # type: ignore
 def test_can_query_audit_log_table() -> None:
+    """
+    Test that querying the audit log model works.
+    """
 
     assert AuditLoggedModel.AuditLog.objects.count() == 0  # type: ignore
 
 
 @pytest.mark.usefixtures("db")  # type: ignore
 def test_insert_is_audit_logged() -> None:
+    """
+    Test that the audit logging context manager works and that we can insert
+    data, and that the insert is audit logged.
+    """
 
     with audit_logging(
         create_temporary_table_sql=create_temporary_table_sql(AuditLoggingContext),

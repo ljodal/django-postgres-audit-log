@@ -9,6 +9,11 @@ from ..models import AuditLoggingContext
 
 @pytest.mark.usefixtures("db")  # type: ignore
 def test_temporary_table_sql() -> None:
+    """
+    Test that we can successfully generate the SQL we need to create the
+    temporary audit logging table, and then execute that SQL to make sure it
+    actually works.
+    """
 
     table_name = AuditLoggingContext._meta.db_table
 

@@ -9,6 +9,10 @@ from ..models import AuditLoggedModel
 
 @pytest.mark.usefixtures("db")  # type: ignore
 def test_view(django_user_model: Type[User], client: Client) -> None:
+    """
+    Test that audit logging a full http request works as expected.
+    """
+
     user = django_user_model.objects.create(username="test", password="test")
     user.set_password("test")
     user.save(update_fields=["password"])
