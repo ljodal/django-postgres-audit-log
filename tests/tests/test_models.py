@@ -27,7 +27,7 @@ def test_can_query_audit_log_table() -> None:
     assert AuditLoggedModel.AuditLog.objects.count() == 0  # type: ignore
 
 
-@pytest.mark.usefixtures("db")  # type: ignore
+@pytest.mark.usefixtures("db", "audit_logging_context")  # type: ignore
 def test_insert_is_audit_logged() -> None:
     """
     Test that the audit logging context manager works and that we can insert
@@ -36,14 +36,7 @@ def test_insert_is_audit_logged() -> None:
 
     AuditLog = AuditLoggedModel.AuditLog  # type: ignore
 
-    with audit_logging(
-        create_temporary_table_sql=create_temporary_table_sql(AuditLoggingContext),
-        drop_temporary_table_sql=drop_temporary_table_sql(AuditLoggingContext),
-        create_context=lambda: AuditLoggingContext.objects.create(
-            context_type="other", context={}
-        ),
-    ):
-        model = AuditLoggedModel.objects.create(some_text="Some text")
+    model = AuditLoggedModel.objects.create(some_text="Some text")
 
     assert AuditLog.objects.count() == 1
     log_entry = AuditLog.objects.get()
@@ -51,7 +44,7 @@ def test_insert_is_audit_logged() -> None:
     assert log_entry.audit_logged_model == model
 
 
-@pytest.mark.usefixtures("db")  # type: ignore
+@pytest.mark.usefixtures("db", "audit_logging_context")  # type: ignore
 def test_update_is_audit_logged() -> None:
     """
     Test that the audit logging context manager works and that we can update
@@ -61,17 +54,10 @@ def test_update_is_audit_logged() -> None:
 
     AuditLog = AuditLoggedModel.AuditLog  # type: ignore
 
-    with audit_logging(
-        create_temporary_table_sql=create_temporary_table_sql(AuditLoggingContext),
-        drop_temporary_table_sql=drop_temporary_table_sql(AuditLoggingContext),
-        create_context=lambda: AuditLoggingContext.objects.create(
-            context_type="other", context={},
-        ),
-    ):
-        model = AuditLoggedModel.objects.create(some_text="Some text")
+    model = AuditLoggedModel.objects.create(some_text="Some text")
 
-        model.some_text = "Updated text"
-        model.save(update_fields=["some_text"])
+    model.some_text = "Updated text"
+    model.save(update_fields=["some_text"])
 
     assert AuditLog.objects.count() == 2
     log_entry = AuditLog.objects.order_by("-id").first()
@@ -81,7 +67,7 @@ def test_update_is_audit_logged() -> None:
     assert log_entry.audit_logged_model == model
 
 
-@pytest.mark.usefixtures("db")  # type: ignore
+@pytest.mark.usefixtures("db", "audit_logging_context")  # type: ignore
 def test_delete_is_audit_logged() -> None:
     """
     Test that the audit logging context manager works and that we can delete
@@ -90,21 +76,14 @@ def test_delete_is_audit_logged() -> None:
 
     AuditLog = AuditLoggedModel.AuditLog  # type: ignore
 
-    with audit_logging(
-        create_temporary_table_sql=create_temporary_table_sql(AuditLoggingContext),
-        drop_temporary_table_sql=drop_temporary_table_sql(AuditLoggingContext),
-        create_context=lambda: AuditLoggingContext.objects.create(
-            context_type="other", context={},
-        ),
-    ):
-        model = AuditLoggedModel.objects.create(some_text="Some text")
+    model = AuditLoggedModel.objects.create(some_text="Some text")
 
-        model.some_text = "Updated text"
-        model.save(update_fields=["some_text"])
+    model.some_text = "Updated text"
+    model.save(update_fields=["some_text"])
 
-        model_id = model.id
+    model_id = model.id
 
-        model.delete()
+    model.delete()
 
     assert AuditLog.objects.count() == 3
     log_entry = AuditLog.objects.order_by("-id").first()

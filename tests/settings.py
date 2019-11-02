@@ -128,6 +128,6 @@ AUDIT_LOGGING_CONTEXT_TYPE_CHOICES = (
     ("HTTP request", "http-request"),
     ("Management command", "management-command"),
     ("Celery task", "celery-task"),
-    ("Other", "other"),
+    ("Test", "test"),
 )
 AUDIT_LOGGING_LOG_ENTRY_CLASS = "audit_log.models.AuditLogEntry"
