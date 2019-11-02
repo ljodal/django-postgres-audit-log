@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import TYPE_CHECKING, Callable, cast
 
 from django.apps import apps
 from django.conf import settings
@@ -6,6 +6,9 @@ from django.http import HttpRequest, HttpResponse
 
 from .context_managers import audit_logging
 from .utils import create_temporary_table_sql, drop_temporary_table_sql
+
+if TYPE_CHECKING:
+    from .models import AuditLoggingBaseContext  # noqa pylint: disable=cyclic-import
 
 
 class AuditLoggingMiddleware:
@@ -36,9 +39,12 @@ class AuditLoggingMiddleware:
         ):
             return self.get_response(request)
 
-    def create_context(self, request: HttpRequest) -> None:
+    def create_context(self, request: HttpRequest) -> "AuditLoggingBaseContext":
         """
         Create context from the given request
         """
 
-        self.context_model.objects.create_from_request(request)
+        return cast(
+            "AuditLoggingBaseContext",
+            self.context_model.objects.create_from_request(request),
+        )
