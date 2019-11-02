@@ -48,7 +48,6 @@ def test_update_is_audit_logged() -> None:
     Test that the audit logging context manager works and that we can update
     data, and that the update is audit logged.
     """
-    # pylint: disable=invalid-name
 
     AuditLog = AuditLoggedModel.AuditLog  # type: ignore
 
