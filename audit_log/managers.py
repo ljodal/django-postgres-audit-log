@@ -6,7 +6,7 @@ from django.http import HttpRequest
 from .management.base import AuditLoggedCommand
 
 if TYPE_CHECKING:
-    from .models import AuditLoggingBaseContext
+    from .models import AuditLoggingBaseContext  # pylint: disable=cyclic-import
 
 
 class AuditLoggingBaseContextManager(models.Manager):
