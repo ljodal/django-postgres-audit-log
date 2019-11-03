@@ -1,7 +1,7 @@
 """
 This defines a custom SchemaEditor class with some extensions.
 """
-from typing import Any, Type, cast
+from typing import TYPE_CHECKING, Any, Type
 
 from django.apps import apps
 from django.conf import settings
@@ -11,8 +11,15 @@ from django.db.backends.postgresql.schema import (
 )
 from django.utils.module_loading import import_string
 
-from .types import AuditLogEntryModel
-from .utils import create_trigger_function_sql, create_triggers_sql
+from .utils import (
+    create_trigger_function_sql,
+    create_triggers_sql,
+    drop_trigger_function_sql,
+    drop_triggers_sql,
+)
+
+if TYPE_CHECKING:
+    from .models import AuditLogEntry  # noqa
 
 
 class SchemaEditor(PostgreSQLSchemaEditor):
@@ -29,7 +36,7 @@ class SchemaEditor(PostgreSQLSchemaEditor):
         # Dynamically get the context model from settings
         app_label, model_name = settings.AUDIT_LOGGING_CONTEXT_MODEL.rsplit(".", 1)
         self._context_model = apps.get_model(app_label=app_label, model_name=model_name)
-        self._log_entry_base_class = import_string(
+        self._log_entry_base_class: Type["AuditLogEntry"] = import_string(
             settings.AUDIT_LOGGING_LOG_ENTRY_CLASS
         )
 
@@ -38,16 +45,55 @@ class SchemaEditor(PostgreSQLSchemaEditor):
         super().create_model(model)
 
         if issubclass(model, self._log_entry_base_class):
-            self._create_audit_logging_triggers(cast(Type[AuditLogEntryModel], model))
+            self.create_audit_logging_triggers(
+                audit_log_model=model,
+                audit_logged_model=model.get_audit_logged_model(),
+            )
 
-    def _create_audit_logging_triggers(self, model: Type[AuditLogEntryModel]) -> None:
+    def delete_model(self, model: Type[models.Model]) -> None:
+
+        if issubclass(model, self._log_entry_base_class):
+            self.drop_audit_logging_triggers(
+                audit_log_model=model,
+                audit_logged_model=model.get_audit_logged_model(),
+            )
+
+        super().create_model(model)
+
+    def create_audit_logging_triggers(
+        self,
+        *,
+        audit_log_model: Type[models.Model],
+        audit_logged_model: Type[models.Model]
+    ) -> None:
         """
         Add audit logging triggers for class
         """
 
         self.deferred_sql.append(
             create_trigger_function_sql(
-                entry_model=model, context_model=self._context_model
+                audit_log_model=audit_log_model,
+                audit_logged_model=audit_logged_model,
+                context_model=self._context_model,
             )
         )
-        self.deferred_sql.extend(create_triggers_sql(entry_model=model))
+        self.deferred_sql.extend(
+            create_triggers_sql(audit_logged_model=audit_logged_model)
+        )
+
+    def drop_audit_logging_triggers(
+        self,
+        *,
+        audit_log_model: Type[models.Model],
+        audit_logged_model: Type[models.Model]
+    ) -> None:
+        """
+        Remove audit logging triggers for class
+        """
+
+        self.deferred_sql.extend(
+            drop_triggers_sql(audit_logged_model=audit_logged_model)
+        )
+        self.deferred_sql.append(
+            drop_trigger_function_sql(audit_logged_model=audit_logged_model,)
+        )

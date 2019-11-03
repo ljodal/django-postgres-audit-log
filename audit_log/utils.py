@@ -4,7 +4,7 @@ Various helpers.
 
 import re
 from functools import lru_cache
-from typing import Sequence, Type
+from typing import TYPE_CHECKING, Sequence, Type
 
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
@@ -14,7 +14,8 @@ from django.db.backends.postgresql.base import (
 )
 from django.utils.module_loading import import_string
 
-from .types import AuditLogEntryModel
+if TYPE_CHECKING:
+    from .models import AuditLogEntry  # noqa
 
 
 def _column_sql(field: models.Field) -> str:
@@ -97,9 +98,7 @@ def drop_temporary_table_sql(model: Type[models.Model]) -> str:
     return f"DROP TABLE {model._meta.db_table}"
 
 
-def create_audit_log_model(
-    *, for_model: Type[models.Model]
-) -> Type[AuditLogEntryModel]:
+def create_audit_log_model(*, for_model: Type[models.Model]) -> Type["AuditLogEntry"]:
     """
     Dynamically create a new Django model for the given model
     """
@@ -119,13 +118,7 @@ def create_audit_log_model(
     ).lower()
 
     # Method to get the
-    get_fk_column = classmethod(
-        lambda cls: cls._meta.get_field(field_name).column  # noqa
-    )
     get_audit_logged_model = classmethod(lambda cls: for_model)
-    get_trigger_name = classmethod(
-        lambda cls: f"{cls._meta.db_table}_create_entry"  # noqa
-    )
 
     _log_entry_base_class = import_string(settings.AUDIT_LOGGING_LOG_ENTRY_CLASS)
 
@@ -135,15 +128,16 @@ def create_audit_log_model(
         {
             "__module__": for_model.__module__,
             field_name: foreign_key,
-            "get_fk_column": get_fk_column,
             "get_audit_logged_model": get_audit_logged_model,
-            "get_trigger_name": get_trigger_name,
         },
     )
 
 
 def create_trigger_function_sql(
-    *, entry_model: Type[AuditLogEntryModel], context_model: Type[models.Model],
+    *,
+    audit_log_model: Type[models.Model],
+    audit_logged_model: Type[models.Model],
+    context_model: Type[models.Model],
 ) -> str:
     """
     Generate the SQL to create the function to log the SQL.
@@ -152,13 +146,17 @@ def create_trigger_function_sql(
     # Need to use _meta, so disable protected property access checks
     # pylint: disable=protected-access
 
-    entry_table_name = entry_model._meta.db_table  # noqa
+    # Convert class name from CamelCase to snake_case, regex taken from
+    # https://stackoverflow.com/a/12867228/1522350
+    field_name = re.sub(
+        r"((?<=[a-z0-9])[A-Z]|(?!^)[A-Z](?=[a-z]))", r"_\1", audit_logged_model.__name__
+    ).lower()
+    foreign_key_column_name = audit_log_model._meta.get_field(field_name).column
+
+    trigger_function_name = f"{ audit_logged_model._meta.db_table }_log_change"
+
+    audit_log_table_name = audit_log_model._meta.db_table  # noqa
     context_table_name = context_model._meta.db_table  # noqa
-    fields = ", ".join(
-        field.column
-        for field in entry_model._meta.get_fields()  # noqa
-        if isinstance(field, models.Field) and not isinstance(field, models.AutoField)
-    )
     context_fields = ", ".join(
         field.column
         for field in context_model._meta.get_fields()  # noqa
@@ -166,21 +164,25 @@ def create_trigger_function_sql(
     )
 
     return f"""
-        CREATE FUNCTION { entry_model.get_trigger_name() }()
+        CREATE FUNCTION { trigger_function_name }()
         RETURNS TRIGGER AS $$
         DECLARE
             -- Id of the inserted row, used to ensure exactly one row is inserted
             entry_id int;
         BEGIN
             IF (TG_OP = 'INSERT') THEN
-                INSERT INTO { entry_table_name } (
-                    { fields }
+                INSERT INTO { audit_log_table_name } (
+                    { context_fields },
+                    action,
+                    at,
+                    changes,
+                    { foreign_key_column_name }
                 ) SELECT
                     { context_fields },
                     TG_OP as action,
                     now() as at,
                     to_jsonb(NEW.*) as changes,
-                    NEW.id as { entry_model.get_fk_column() }
+                    NEW.id as { foreign_key_column_name }
                 -- We rely on this table being created by out Django middleware
                 FROM { context_table_name }
                 -- We return the id into the variable to make postgresql check
@@ -188,8 +190,12 @@ def create_trigger_function_sql(
                 RETURNING id INTO STRICT entry_id;
                 RETURN NEW;
             ELSIF (TG_OP = 'UPDATE') THEN
-                INSERT INTO { entry_table_name } (
-                    { fields }
+                INSERT INTO { audit_log_table_name } (
+                    { context_fields },
+                    action,
+                    at,
+                    changes,
+                    { foreign_key_column_name }
                 ) SELECT
                     { context_fields },
                     TG_OP as action,
@@ -215,7 +221,7 @@ def create_trigger_function_sql(
                             -- Only select rows that have actually changed
                             old_row.* IS DISTINCT FROM new_row.*
                     ) as changes,
-                    NEW.id as { entry_model.get_fk_column() }
+                    NEW.id as { foreign_key_column_name }
                 -- We rely on this table being created by out Django middleware
                 FROM { context_table_name }
                 -- We return the id into the variable to make postgresql check
@@ -223,14 +229,18 @@ def create_trigger_function_sql(
                 RETURNING id INTO STRICT entry_id;
                 RETURN NEW;
             ELSIF (TG_OP = 'DELETE') THEN
-                INSERT INTO { entry_table_name } (
-                    { fields }
+                INSERT INTO { audit_log_table_name } (
+                    { context_fields },
+                    action,
+                    at,
+                    changes,
+                    { foreign_key_column_name }
                 ) SELECT
                     { context_fields },
                     TG_OP as action,
                     now() as at,
                     to_jsonb(OLD.*) as changes,
-                    null as { entry_model.get_fk_column() }
+                    null as { foreign_key_column_name }
                 -- We rely on this table being created by out Django middleware
                 FROM { context_table_name }
                 -- We return the id into the variable to make postgresql check
@@ -243,15 +253,15 @@ def create_trigger_function_sql(
         """
 
 
-def drop_trigger_function_sql(*, entry_model: Type[AuditLogEntryModel]) -> str:
+def drop_trigger_function_sql(*, audit_logged_model: Type[models.Model],) -> str:
     """
     Create the SQL required to drop the trigger function for the given model
     """
 
-    return f"DROP FUNCTION { entry_model.get_trigger_name() }"
+    return f"DROP FUNCTION { audit_logged_model._meta.db_table }_log_change"
 
 
-def create_triggers_sql(*, entry_model: Type[AuditLogEntryModel]) -> Sequence[str]:
+def create_triggers_sql(*, audit_logged_model: Type[models.Model]) -> Sequence[str]:
     """
     Create the SQL requried to set up triggers for audit logging to the given
     audit log entry model.
@@ -261,14 +271,14 @@ def create_triggers_sql(*, entry_model: Type[AuditLogEntryModel]) -> Sequence[st
     # pylint: disable=protected-access
 
     # Get the model that we are audit logging
-    audit_logged_model = entry_model.get_audit_logged_model()
     audit_logged_table = audit_logged_model._meta.db_table  # noqa
+    trigger_function_name = f"{audit_logged_table}_log_change"
 
     insert_trigger = f"""
     CREATE TRIGGER log_insert
         AFTER INSERT ON { audit_logged_table }
         FOR EACH ROW
-        EXECUTE FUNCTION { entry_model.get_trigger_name() }()
+        EXECUTE FUNCTION { trigger_function_name }()
     """
 
     update_trigger = f"""
@@ -276,20 +286,20 @@ def create_triggers_sql(*, entry_model: Type[AuditLogEntryModel]) -> Sequence[st
         AFTER UPDATE ON { audit_logged_table }
         FOR EACH ROW
         WHEN (OLD.* IS DISTINCT FROM NEW.*)
-        EXECUTE FUNCTION { entry_model.get_trigger_name() }()
+        EXECUTE FUNCTION { trigger_function_name }()
     """
 
     delete_trigger = f"""
     CREATE TRIGGER log_delete
         AFTER DELETE ON { audit_logged_table }
         FOR EACH ROW
-        EXECUTE FUNCTION { entry_model.get_trigger_name() }()
+        EXECUTE FUNCTION { trigger_function_name }()
     """
 
     return (insert_trigger, update_trigger, delete_trigger)
 
 
-def drop_triggers_sql(*, entry_model: Type[AuditLogEntryModel]) -> Sequence[str]:
+def drop_triggers_sql(*, audit_logged_model: Type[models.Model]) -> Sequence[str]:
     """
     Generate the SQL required to remove the audit logging triggers for the
     given audit log entry model.
@@ -299,7 +309,6 @@ def drop_triggers_sql(*, entry_model: Type[AuditLogEntryModel]) -> Sequence[str]
     # pylint: disable=protected-access
 
     # Get the model that we are audit logging
-    audit_logged_model = entry_model.get_audit_logged_model()
     audit_logged_table = audit_logged_model._meta.db_table  # noqa
 
     return (

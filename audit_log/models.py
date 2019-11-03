@@ -1,3 +1,5 @@
+from typing import Callable, Type
+
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db import models
@@ -34,6 +36,9 @@ class AuditLogEntry(models.Model):
     """
     Base class for audit log entries
     """
+
+    # Define attributes that we are dynamically adding to subclasses
+    get_audit_logged_model: Callable[[], Type[models.Model]]
 
     # Track the user that performed the action.
     performed_by = models.ForeignKey(

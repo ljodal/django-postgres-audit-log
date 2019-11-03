@@ -174,8 +174,8 @@ def test_sql_delete_is_audit_logged() -> None:
         cursor.execute(
             (
                 f"UPDATE {AuditLog._meta.db_table} "
-                f"SET {AuditLog.get_fk_column()}=null "
-                f"WHERE {AuditLog.get_fk_column()}=%s"
+                "SET audit_logged_model_id=null "
+                "WHERE audit_logged_model_id=%s"
             ),
             [model.id],
         )

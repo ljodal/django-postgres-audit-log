@@ -15,6 +15,4 @@ class Command(AuditLoggedCommand):
         Write to an audit logged model, just to test
         """
 
-        print(kwargs)
-
         AuditLoggedModel.objects.create(some_text="Hello command")
