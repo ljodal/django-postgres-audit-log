@@ -1,14 +1,10 @@
-from typing import TYPE_CHECKING, Any, Type, cast
+from typing import Any, Type
 
 from django.apps import apps
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from ..context_managers import audit_logging
-from ..utils import create_temporary_table_sql, drop_temporary_table_sql
-
-if TYPE_CHECKING:
-    from ..models import AuditLoggingBaseContext  # noqa pylint: disable=cyclic-import
+from .. import context_managers, models, utils
 
 
 class AuditLoggedCommand(BaseCommand):
@@ -23,15 +19,17 @@ class AuditLoggedCommand(BaseCommand):
 
         # Dynamically get the context model from settings
         app_label, model_name = settings.AUDIT_LOGGING_CONTEXT_MODEL.rsplit(".", 1)
-        self.context_model: Type["AuditLoggingBaseContext"] = apps.get_model(
+        self.context_model: Type[models.AuditLoggingBaseContext] = apps.get_model(
             app_label=app_label, model_name=model_name
         )
 
     def execute(self, *args: Any, **kwargs: Any) -> Any:
 
-        with audit_logging(
-            create_temporary_table_sql=create_temporary_table_sql(self.context_model),
-            drop_temporary_table_sql=drop_temporary_table_sql(self.context_model),
+        with context_managers.audit_logging(
+            create_temporary_table_sql=utils.create_temporary_table_sql(
+                self.context_model
+            ),
+            drop_temporary_table_sql=utils.drop_temporary_table_sql(self.context_model),
             create_context=lambda: self.create_context(*args, **kwargs),
         ):
             # Continue as normal
@@ -42,14 +40,13 @@ class AuditLoggedCommand(BaseCommand):
             "Subclasses of AuditLoggedCommand must provide a handle() method"
         )
 
-    def create_context(self, *args: Any, **kwargs: Any) -> "AuditLoggingBaseContext":
+    def create_context(
+        self, *args: Any, **kwargs: Any
+    ) -> models.AuditLoggingBaseContext:
         """
         Create the context needed for audit logging changes made by this command.
         """
 
-        return cast(
-            "AuditLoggingBaseContext",
-            self.context_model.objects.create_from_management_command(
-                cls=self.__class__, args=args, kwargs=kwargs
-            ),
+        return self.context_model.create_from_management_command(
+            command_cls=self.__class__, args=args, kwargs=kwargs
         )

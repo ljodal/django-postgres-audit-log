@@ -4,7 +4,7 @@ from django.core import management
 from ..models import AuditLoggedModel
 
 
-@pytest.mark.usefixtures("db")  # type: ignore
+@pytest.mark.usefixtures("db")
 def test_management_command() -> None:
     """
     Test that calling a managment command works with audit logging.

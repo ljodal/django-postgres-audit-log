@@ -1,7 +1,6 @@
 import pytest
-from django.db import connection
-
 from audit_log.models import AuditLogEntry
+from django.db import connection
 
 from ..models import AuditLoggedModel
 
@@ -17,7 +16,7 @@ def test_has_audit_log_defined() -> None:
     assert issubclass(AuditLoggedModel.AuditLog, AuditLogEntry)  # type: ignore
 
 
-@pytest.mark.usefixtures("db")  # type: ignore
+@pytest.mark.usefixtures("db")
 def test_can_query_audit_log_table() -> None:
     """
     Test that querying the audit log model works.
@@ -26,7 +25,7 @@ def test_can_query_audit_log_table() -> None:
     assert AuditLoggedModel.AuditLog.objects.count() == 0  # type: ignore
 
 
-@pytest.mark.usefixtures("db", "audit_logging_context")  # type: ignore
+@pytest.mark.usefixtures("db", "audit_logging_context")
 def test_insert_is_audit_logged() -> None:
     """
     Test that the audit logging context manager works and that we can insert
@@ -44,7 +43,7 @@ def test_insert_is_audit_logged() -> None:
     assert log_entry.audit_logged_model == model
 
 
-@pytest.mark.usefixtures("db", "audit_logging_context")  # type: ignore
+@pytest.mark.usefixtures("db", "audit_logging_context")
 def test_single_model_update_is_audit_logged() -> None:
     """
     Test that the audit logging context manager works and that we can update
@@ -66,7 +65,7 @@ def test_single_model_update_is_audit_logged() -> None:
     assert log_entry.audit_logged_model == model
 
 
-@pytest.mark.usefixtures("db", "audit_logging_context")  # type: ignore
+@pytest.mark.usefixtures("db", "audit_logging_context")
 def test_bulk_update_is_audit_logged() -> None:
     """
     Test that the audit logging context manager works and that we can update
@@ -87,7 +86,7 @@ def test_bulk_update_is_audit_logged() -> None:
     assert log_entry.audit_logged_model == model
 
 
-@pytest.mark.usefixtures("db", "audit_logging_context")  # type: ignore
+@pytest.mark.usefixtures("db", "audit_logging_context")
 def test_sql_update_is_audit_logged() -> None:
     """
     Test that the audit logging context manager works and that we can update
@@ -112,7 +111,7 @@ def test_sql_update_is_audit_logged() -> None:
     assert log_entry.audit_logged_model == model
 
 
-@pytest.mark.usefixtures("db", "audit_logging_context")  # type: ignore
+@pytest.mark.usefixtures("db", "audit_logging_context")
 def test_delete_is_audit_logged() -> None:
     """
     Test that the audit logging context manager works and that we can delete
@@ -134,7 +133,7 @@ def test_delete_is_audit_logged() -> None:
     assert log_entry.audit_logged_model is None
 
 
-@pytest.mark.usefixtures("db", "audit_logging_context")  # type: ignore
+@pytest.mark.usefixtures("db", "audit_logging_context")
 def test_bulk_delete_is_audit_logged() -> None:
     """
     Test that the audit logging context manager works and that we can delete
@@ -156,7 +155,7 @@ def test_bulk_delete_is_audit_logged() -> None:
     assert log_entry.audit_logged_model is None
 
 
-@pytest.mark.usefixtures("db", "audit_logging_context")  # type: ignore
+@pytest.mark.usefixtures("db", "audit_logging_context")
 def test_sql_delete_is_audit_logged() -> None:
     """
     Test that the audit logging context manager works and that we can delete
@@ -182,7 +181,8 @@ def test_sql_delete_is_audit_logged() -> None:
 
         # Then delete the model we want to delete
         cursor.execute(
-            f"DELETE FROM {AuditLoggedModel._meta.db_table} WHERE id=%s", [model.id],
+            f"DELETE FROM {AuditLoggedModel._meta.db_table} WHERE id=%s",
+            [model.id],
         )
 
     AuditLoggedModel.objects.filter(id=model_id).delete()

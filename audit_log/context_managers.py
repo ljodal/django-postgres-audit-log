@@ -1,12 +1,11 @@
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Callable, Generator, TypeVar
+from typing import Callable, Generator, TypeVar
 
 from django.db import connection
 
-if TYPE_CHECKING:
-    from .models import AuditLoggingBaseContext  # noqa pylint: disable=cyclic-import
+from . import models
 
-ContextModel = TypeVar("ContextModel", bound="AuditLoggingBaseContext")
+ContextModel = TypeVar("ContextModel", bound=models.AuditLoggingBaseContext)
 
 
 @contextmanager

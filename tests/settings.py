@@ -79,7 +79,7 @@ WSGI_APPLICATION = "tests.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "audit_log.db.backend",
-        "NAME": os.environ.get("POSTGRES_DB", None),
+        "NAME": os.environ.get("POSTGRES_DB", "django_audit_log"),
         "USER": os.environ.get("POSTGRES_USER", None),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", None),
         "HOST": os.environ.get("POSTGRES_HOST", None),

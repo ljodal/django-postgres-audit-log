@@ -10,4 +10,4 @@ class DatabaseWrapper(PostgreSQLDatabaseWrapper):
     A subclass of the PostgreSQL databasw wrapper with an extended schema editor.
     """
 
-    SchemaEditorClass = SchemaEditor
+    SchemaEditorClass = SchemaEditor  # type: ignore

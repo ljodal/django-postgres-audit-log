@@ -1,9 +1,7 @@
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
-from django.conf import settings
 from django.db import models
 from django.db.migrations.operations import CreateModel
-from django.utils.module_loading import import_string
 
 from ...schema import SchemaEditor
 

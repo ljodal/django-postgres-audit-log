@@ -1,13 +1,13 @@
 from typing import Type
 
 import pytest
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User  # pylint: disable=imported-auth-user
 from django.test import Client
 
 from ..models import AuditLoggedModel
 
 
-@pytest.mark.usefixtures("db")  # type: ignore
+@pytest.mark.usefixtures("db")
 def test_view(django_user_model: Type[User], client: Client) -> None:
     """
     Test that audit logging a full http request works as expected.
