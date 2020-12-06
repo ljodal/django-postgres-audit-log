@@ -23,7 +23,7 @@ jobs:
      - name: Install dependencies
        run: |
            poetry export --dev --format=requirements.txt -o requirements.txt
-           pip install requirements.txt
+           pip install -r requirements.txt
      - name: Run black
        uses: ljodal/python-actions/black@master
        with:
