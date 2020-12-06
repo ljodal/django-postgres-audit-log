@@ -60,19 +60,19 @@ class SchemaEditor(PostgreSQLSchemaEditor):
         Add audit logging triggers for class
         """
 
-        self.deferred_sql.extend(
-            utils.add_audit_logging_sql(
-                audit_logged_model=audit_logged_model,
-                context_model=self._context_model,
-                log_entry_model=self._log_entry_model,
-            )
+        sql = utils.add_audit_logging_sql(
+            audit_logged_model=audit_logged_model,
+            context_model=self._context_model,
+            log_entry_model=self._log_entry_model,
         )
+        for query in sql:
+            self.execute(query)
 
     def drop_audit_logging_triggers(self, *, audit_logged_model: Type[Model]) -> None:
         """
         Remove audit logging triggers for class
         """
 
-        self.deferred_sql.extend(
-            utils.remove_audit_logging_sql(audit_logged_model=audit_logged_model)
-        )
+        sql = utils.remove_audit_logging_sql(audit_logged_model=audit_logged_model)
+        for query in sql:
+            self.execute(query)

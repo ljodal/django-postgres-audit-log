@@ -3,6 +3,7 @@ Various helpers.
 """
 
 from functools import lru_cache
+from textwrap import dedent
 from typing import List, Sequence, Type
 
 from django.apps import apps
@@ -115,7 +116,8 @@ def create_trigger_function_sql(
 
     log_entry_table_name = log_entry_model._meta.db_table
 
-    return f"""
+    return dedent(
+        f"""
         CREATE FUNCTION { trigger_function_name }()
         RETURNS TRIGGER AS $$
         DECLARE
@@ -215,6 +217,7 @@ def create_trigger_function_sql(
         END;
         $$ language 'plpgsql';
         """
+    )
 
 
 def drop_trigger_function_sql(
@@ -238,27 +241,33 @@ def create_triggers_sql(*, audit_logged_model: Type[Model]) -> Sequence[str]:
     audit_logged_table = audit_logged_model._meta.db_table  # noqa
     trigger_function_name = f"{audit_logged_table}_log_change"
 
-    insert_trigger = f"""
-    CREATE TRIGGER log_insert
+    insert_trigger = dedent(
+        f"""
+        CREATE TRIGGER log_insert
         AFTER INSERT ON { audit_logged_table }
         FOR EACH ROW
         EXECUTE FUNCTION { trigger_function_name }()
-    """
+        """
+    )
 
-    update_trigger = f"""
-    CREATE TRIGGER log_update
+    update_trigger = dedent(
+        f"""
+        CREATE TRIGGER log_update
         AFTER UPDATE ON { audit_logged_table }
         FOR EACH ROW
         WHEN (OLD.* IS DISTINCT FROM NEW.*)
         EXECUTE FUNCTION { trigger_function_name }()
-    """
+        """
+    )
 
-    delete_trigger = f"""
-    CREATE TRIGGER log_delete
+    delete_trigger = dedent(
+        f"""
+        CREATE TRIGGER log_delete
         AFTER DELETE ON { audit_logged_table }
         FOR EACH ROW
         EXECUTE FUNCTION { trigger_function_name }()
-    """
+        """
+    )
 
     return (insert_trigger, update_trigger, delete_trigger)
 
@@ -292,11 +301,13 @@ def create_content_type_sql(*, audit_logged_model: Type[Model]) -> str:
     app_label = audit_logged_model._meta.app_label
     model_name = audit_logged_model._meta.model_name
 
-    return f"""
-    INSERT INTO django_content_type (app_label, model)
-    VALUES ('{app_label}', '{model_name}')
-    ON CONFLICT (app_label, model) DO NOTHING
-    """
+    return dedent(
+        f"""
+        INSERT INTO django_content_type (app_label, model)
+        VALUES ('{app_label}', '{model_name}')
+        ON CONFLICT (app_label, model) DO NOTHING
+        """
+    )
 
 
 def is_audit_logs_field(field: Field) -> bool:
