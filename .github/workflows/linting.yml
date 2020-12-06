@@ -12,29 +12,38 @@ jobs:
        uses: actions/setup-python@v1
        with:
          python-version: 3.7
+      - name: Set up poetry
+        shell: bash
+        run: |
+          curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+          echo "$HOME/.poetry/bin" >> $GITHUB_PATH
+      - name: Create venv
+        run: |
+          python -m venv .venv
+          echo "VIRTUAL_ENV=./.venv" >> $GITHUB_ENV
      - name: Install dependencies
-       run: pip install -r requirements.txt
+       run: |
+           poetry export --dev --format=requirements.txt -o requirements.txt
+           pip install requirements.txt
      - name: Run black
        uses: ljodal/python-actions/black@master
        with:
          github-token: ${{ secrets.GITHUB_TOKEN }}
-         max-errors: 0
-         paths: ./audit_log ./tests
      - name: Run flake8
        uses: ljodal/python-actions/flake8@feature/flake8
        with:
          github-token: ${{ secrets.GITHUB_TOKEN }}
          max-errors: 0
-         paths: ./audit_log ./tests
-     - name: Run pylint
-       uses: ljodal/python-actions/pylint@feature/pylint
-       with:
-         github-token: ${{ secrets.GITHUB_TOKEN }}
-         max-errors: 0
-         paths: ./audit_log ./tests
      - name: Run mypy
-       uses: ljodal/python-actions/mypy@tweak/mypy
+       uses: kolonialno/mypy-action@v1
        with:
          github-token: ${{ secrets.GITHUB_TOKEN }}
          max-errors: 0
-         paths: ./audit_log ./tests
+     - name: Run isort
+       run: isort --recursive --check-only ./audit_log ./tests
+     - name: Run pylint
+       uses: kolonialno/pylint-action@v0.0.8
+       with:
+         github-token: ${{ secrets.GITHUB_TOKEN }}
+       env:
+         DJANGO_SETTINGS_MODULE: tests.settings
