@@ -1,6 +1,7 @@
 from typing import Any, Generator
 
 import pytest
+
 from audit_log.context_managers import audit_logging
 from audit_log.utils import create_temporary_table_sql, drop_temporary_table_sql
 

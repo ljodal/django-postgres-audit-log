@@ -1,7 +1,8 @@
 import pytest
-from audit_log.utils import create_temporary_table_sql, drop_temporary_table_sql
 from django.conf import settings
 from django.db import connection
+
+from audit_log.utils import create_temporary_table_sql, drop_temporary_table_sql
 
 from ..models import AuditLogContext
 

@@ -1,6 +1,7 @@
 from unittest import mock
 
 import pytest
+
 from audit_log.middleware import AuditLoggingMiddleware
 
 
