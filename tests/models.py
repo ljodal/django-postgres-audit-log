@@ -31,3 +31,19 @@ class MyAuditLoggedModel(AuditLoggedModel):
     """
 
     some_text = models.TextField()
+
+
+class MyConvertedToAuditLoggedModel(AuditLoggedModel):
+    """
+    A model that is audit logged.
+    """
+
+    some_text = models.TextField()
+
+
+class MyNoLongerAuditLoggedModel(models.Model):
+    """
+    A model that is audit logged.
+    """
+
+    some_text = models.TextField()

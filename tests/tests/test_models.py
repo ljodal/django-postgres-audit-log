@@ -3,7 +3,12 @@ from typing import Callable
 import pytest
 from django.db import connection
 
-from ..models import AuditLogEntry, MyAuditLoggedModel
+from ..models import (
+    AuditLogEntry,
+    MyAuditLoggedModel,
+    MyConvertedToAuditLoggedModel,
+    MyNoLongerAuditLoggedModel,
+)
 
 
 @pytest.mark.usefixtures("db", "audit_logging_context")
@@ -20,6 +25,36 @@ def test_insert_is_audit_logged() -> None:
     log_entry = model.audit_logs.get()
     assert log_entry.changes == {"id": model.id, "some_text": "Some text"}
     assert log_entry.log_object == model
+
+
+@pytest.mark.usefixtures("db", "audit_logging_context")
+def test_insert_is_audit_logged_on_converted_model() -> None:
+    """
+    Test that the audit logging context manager works and that we can insert
+    data, and that the insert is audit logged.
+    """
+
+    model = MyConvertedToAuditLoggedModel.objects.create(some_text="Some text")
+
+    assert model.audit_logs.count() == 1
+
+    log_entry = model.audit_logs.get()
+    assert log_entry.changes == {"id": model.id, "some_text": "Some text"}
+    assert log_entry.log_object == model
+
+
+@pytest.mark.usefixtures("db", "audit_logging_context")
+def test_insert_is_not_audit_logged_on_removed_model() -> None:
+    """
+    Test that the audit logging context manager works and that we can insert
+    data, and that the insert is audit logged.
+    """
+
+    assert AuditLogEntry.objects.count() == 0
+
+    MyNoLongerAuditLoggedModel.objects.create(some_text="Some text")
+
+    assert AuditLogEntry.objects.count() == 0
 
 
 @pytest.mark.usefixtures("db", "audit_logging_context")

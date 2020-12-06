@@ -10,6 +10,8 @@ from django.db.backends.postgresql.base import (
 )
 from django.db.models import AutoField, Field, ForeignKey, JSONField, Model
 
+from . import fields
+
 
 def _column_sql(field: Field) -> str:
     """
@@ -293,3 +295,19 @@ def create_content_type(*, audit_logged_model: Type[Model]) -> str:
     VALUES ('{app_label}', '{model_name}')
     ON CONFLICT (app_label, model) DO NOTHING
     """
+
+
+def is_audit_logs_field(field: Field) -> bool:
+    """
+    Check if a given field is an AuditLogsField
+    """
+
+    return isinstance(field, fields.AuditLogsField)
+
+
+def has_audit_logs_field(model: Type[Model]) -> bool:
+    """
+    Check if any of the model's fields is an AuditLogsField
+    """
+
+    return any(is_audit_logs_field(field) for field in model._meta.local_fields)

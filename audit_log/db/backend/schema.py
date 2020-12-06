@@ -8,10 +8,10 @@ from django.conf import settings
 from django.db.backends.postgresql.schema import (
     DatabaseSchemaEditor as PostgreSQLSchemaEditor,
 )
-from django.db.models import Model
+from django.db.models import Field, Model
 from django.utils.module_loading import import_string
 
-from ... import fields, utils
+from ... import utils
 
 
 class SchemaEditor(PostgreSQLSchemaEditor):
@@ -37,21 +37,31 @@ class SchemaEditor(PostgreSQLSchemaEditor):
 
         super().create_model(model)
 
-        if any(
-            isinstance(field, fields.AuditLogsField)
-            for field in model._meta.local_fields
-        ):
+        if utils.has_audit_logs_field(model):
             self.create_audit_logging_triggers(audit_logged_model=model)
 
     def delete_model(self, model: Type[Model]) -> None:
 
-        if any(
-            isinstance(field, fields.AuditLogsField)
-            for field in model._meta.local_fields
-        ):
+        if utils.has_audit_logs_field(model):
             self.drop_audit_logging_triggers(audit_logged_model=model)
 
         super().create_model(model)
+
+    def add_field(self, model: Type[Model], field: Field) -> None:
+        super().add_field(model, field)
+
+        if utils.is_audit_logs_field(field):
+            self.create_audit_logging_triggers(audit_logged_model=model)
+
+    def remove_field(self, model: Type[Model], field: Field) -> None:
+        super().remove_field(model, field)
+
+        if utils.is_audit_logs_field(field):
+            self.drop_audit_logging_triggers(audit_logged_model=model)
+
+    ####################
+    # Internal helpers #
+    ####################
 
     def create_audit_logging_triggers(self, *, audit_logged_model: Type[Model]) -> None:
         """
