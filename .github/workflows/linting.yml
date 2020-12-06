@@ -21,9 +21,7 @@ jobs:
          python -m venv .venv
          echo "VIRTUAL_ENV=./.venv" >> $GITHUB_ENV
      - name: Install dependencies
-       run: |
-           poetry export --dev --format=requirements.txt -o requirements.txt
-           pip install -r requirements.txt
+       run: poetry install
      - name: Run black
        uses: ljodal/python-actions/black@master
        with:
