@@ -17,8 +17,8 @@ def test_management_command() -> None:
     assert MyAuditLoggedModel.objects.count() == 1
     model = MyAuditLoggedModel.objects.get()
 
-    assert model.audit_logs.count() == 1  # type: ignore
-    audit_log = model.audit_logs.get()  # type: ignore
+    assert model.audit_logs.count() == 1
+    audit_log = model.audit_logs.get()
 
     assert audit_log.context_type == "management-command"
     assert audit_log.context == {
