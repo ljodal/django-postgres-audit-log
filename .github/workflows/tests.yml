@@ -31,7 +31,7 @@ jobs:
         run: |
           python -m venv .venv
           echo "VIRTUAL_ENV=$GITHUB_WORKSPACE/.venv" >> $GITHUB_ENV
-          echo "PATH=$VIRTUAL_ENV/bin:$PATH" >> $GITHUB_ENV
+          echo "$VIRTUAL_ENV/bin" >> $GITHUB_PATH
       - name: Install dependencies
         run: poetry install
       - name: Run tests with migrations
