@@ -93,13 +93,11 @@ To get started auditing your models there are a few steps you need to complete:
        pass
    ``` 
 
-   Subclassing this model will add an `AuditLogsField` to your model. This is a
-   virtual field that doesn't have a column in the database. It points to a
-
-   This decorator will dynamically create a model that includes all the fields
-   from the base audit log model, plus a foreign key to the decorated model.
-   You can access a model's audit log entries though `my_instance.audit_log`
-   which will give you a normal QuerySet that you can filter as you like.
+   Subclassing this model will add an `AuditLogsField` field to your model (this
+   is virtual field that doesn't have a column in the database). It's a reverse
+   lookup for the generic foreign key on `BaseLogEntry`, giving you easy access
+   to audit log entries for that specific model and is also used by the schema
+   editor to detect that triggers should be added to a certain model.
 
 
 5. Make migrations
@@ -108,11 +106,8 @@ To get started auditing your models there are a few steps you need to complete:
    ./manage.py makemigrations
    ```
 
-   You will see that this will cause a new field to be added to each of the
-   models you have updated to subclass `AuditLoggedModel`. That field gives you
-   easy access to any log entries for a specific instance of that model, and is
-   also used by the database engine to automatically add the audit logging
-   triggers to that model.
+   This will create migrations to add the `audit_logs` to each of the models you
+   have updated to subclass `AuditLoggedModel`.
 
 6. Migrate the database
 
@@ -121,6 +116,6 @@ To get started auditing your models there are a few steps you need to complete:
    ```
 
    This is where most of the magic happens. The schema editor of the custom
-   database wrapper will pick up that we are migrating a model that has an audit
-   log field and automagically install triggers on the table to ensure that any
-   change is picked up and logged.
+   database wrapper will pick up that we are migrating a model that has an
+   `AuditLogsField` field and automagically install triggers on the table to
+   ensure that any change is picked up and logged.
