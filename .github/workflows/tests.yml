@@ -31,10 +31,10 @@ jobs:
         run: |
           python -m venv .venv
           echo "VIRTUAL_ENV=./.venv" >> $GITHUB_ENV
-     - name: Install dependencies
-       run: |
-           poetry export --dev --format=requirements.txt -o requirements.txt
-           pip install requirements.txt
+      - name: Install dependencies
+        run: |
+            poetry export --dev --format=requirements.txt -o requirements.txt
+            pip install requirements.txt
       - name: Run tests without migrations
         run: python -m pytest --no-migrations
         env:
