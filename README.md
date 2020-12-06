@@ -5,8 +5,11 @@ Audit logging for [Django](https://djangoproject.com) using Postgres triggers.
 
 ## Installation
 
+This package is currently not published anywhere, so you have to install it
+directly from GitHub:
+
 ```sh
-pip install django-postgres-audit-log
+pip install git+https://github.com/ljodal/django-postgres-audit-log.git
 ```
 
 ## Usage
@@ -25,12 +28,46 @@ To get started auditing your models there are a few steps you need to complete:
    }
    ```
 
-   This is required because this plugin relies on injecting extra SQL when you
-   run migrations. If you already have a custom database wrapper or for some
-   other reason cannot use this package's database wrapper you can include just
-   the schema editor from `audit_log.db.schema_editor`.
+   This is highly recommended, but not strictly required. Doing this enables
+   automatic audit logging registration for your models. It is also possible to
+   use this library without using the custom database engine, but then you will
+   have to manually enable audit logging on your models by using the provided
+   migration operations.
 
-2. Install the middleware
+   If you already have a custom database wrapper you can use or subclasss
+   just the schema editor from `audit_log.db.backend.schema`.
+
+2. Set up models for the audit logging, and add them to settings:
+
+   ```python
+   # my_app/models.py
+   from audit_log.models import BaseContext, BaseLogEntry
+
+   class AuditLogContext(BaseContext):
+       class Meta:
+           managed = False
+
+   class AuditLogEntry(BaseLogEntry):
+       pass
+    ```
+
+    ```python
+    # settings.py
+
+    AUDIT_LOG_CONTEXT_MODEL = 'my_app.AuditLogContext'
+    AUDIT_LOG_ENTRY_MODEL = 'my_app.AuditLogEntry'
+    ```
+
+    You can also add fields to these models if you have additional context you
+    want to include in the audit log. All fields from the context model are
+    automatically copied to the log entries, so make sure to add any custom
+    fields to both models.
+
+    Also note that the context model is set as `managed = False`. That is
+    important as that table should not exist in the database, instead that model
+    is used to create a temporary table for each request etc.
+
+3. Install the middleware
 
    ```python
    # settings.py
@@ -42,43 +79,43 @@ To get started auditing your models there are a few steps you need to complete:
    ```
 
    In order to get details about the current request (like the current user)
-   into the database we rely on a middleware that creates a temporary table and
-   inserts information about the current request into that table. That table is
-   read by the trigger to include the context in the audit log entries.
+   into the database we rely on a middleware that creates the temporary context
+   table and inserts information about the current request into that table. That
+   table is read by the trigger to include the context in the audit log entries.
 
-3. Decorate the models you want to audit log
+4. Update the models you want to audit log
 
    ```python
    # models.py
-   from audit_log.decorators import audit_logged
-   from django.db import models
+   from audit_log.models import AuditLoggedModel
 
-   @audit_logged()
-   class MyModel(models.Model):
+   class MyModel(AuditLoggedModel):
        pass
    ``` 
 
-   This decorator will dynamically create a model that includes all the fields
-   from the base audit log model, plus a foreign key to the decorated model.
-   You can access a model's audit log entries though `my_instance.audit_log`
-   which will give you a normal QuerySet that you can filter as you like.
+   Subclassing this model will add an `AuditLogsField` field to your model (this
+   is virtual field that doesn't have a column in the database). It's a reverse
+   lookup for the generic foreign key on `BaseLogEntry`, giving you easy access
+   to audit log entries for that specific model and is also used by the schema
+   editor to detect that triggers should be added to a certain model.
 
 
-4. Make migrations
+5. Make migrations
 
    ```sh
    ./manage.py makemigrations
    ```
 
-   This will not create a migration for the audit log model of `MyModel`.
+   This will create migrations to add the `audit_logs` to each of the models you
+   have updated to subclass `AuditLoggedModel`.
 
-5. Migrate the database
+6. Migrate the database
 
    ```sh
    ./manage.py migrate
    ```
 
    This is where most of the magic happens. The schema editor of the custom
-   database wrapper will pick up that we are migrating a model that is an audit
-   log table for another model, and automagically install triggers on the table
-   being audited to ensure that any change is picked up and logged.
+   database wrapper will pick up that we are migrating a model that has an
+   `AuditLogsField` field and automagically install triggers on the table to
+   ensure that any change is picked up and logged.

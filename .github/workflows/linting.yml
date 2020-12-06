@@ -1,0 +1,47 @@
+name: Linting
+
+on: [push]
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+     - name: Check out code
+       uses: actions/checkout@v1
+     - name: Set up Python
+       uses: actions/setup-python@v1
+       with:
+         python-version: 3.7
+     - name: Set up poetry
+       run: |
+         curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+         echo "$HOME/.poetry/bin" >> $GITHUB_PATH
+     - name: Create venv
+       run: |
+         python -m venv "$GITHUB_WORKSPACE/.venv"
+         echo "VIRTUAL_ENV=$GITHUB_WORKSPACE/.venv" >> $GITHUB_ENV
+         echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
+     - name: Install dependencies
+       run: poetry install
+     - name: Run black
+       uses: ljodal/python-actions/black@master
+       with:
+         github-token: ${{ secrets.GITHUB_TOKEN }}
+     - name: Run flake8
+       uses: ljodal/python-actions/flake8@feature/flake8
+       with:
+         github-token: ${{ secrets.GITHUB_TOKEN }}
+         max-errors: 0
+#    - name: Run mypy
+#      uses: kolonialno/mypy-action@v1
+#      with:
+#        github-token: ${{ secrets.GITHUB_TOKEN }}
+#        max-errors: 0
+     - name: Run isort
+       run: isort --recursive --check-only ./audit_log ./tests
+     - name: Run pylint
+       uses: kolonialno/pylint-action@v0.0.8
+       with:
+         github-token: ${{ secrets.GITHUB_TOKEN }}
+       env:
+         DJANGO_SETTINGS_MODULE: tests.settings

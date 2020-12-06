@@ -1,0 +1,7 @@
+[MASTER]
+load-plugins=pylint_django
+
+[MESSAGES CONTROL]
+# C0330 - Wrong continued indentation.
+# C0114 - Missing module docstring (missing-module-docstring)
+disable=C0114,C0330
