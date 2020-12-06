@@ -34,8 +34,8 @@ jobs:
           echo "PATH=$VIRTUAL_ENV/bin:$PATH" >> $GITHUB_ENV
       - name: Install dependencies
         run: poetry install
-      - name: Run tests without migrations
-        run: python -m pytest --no-migrations
+      - name: Run tests with migrations
+        run: python -m pytest --migrations
         env:
           POSTGRES_DB: audit_log
           POSTGRES_USER: audit_log
@@ -43,8 +43,8 @@ jobs:
           POSTGRES_HOST: localhost
           POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
           DJANGO_SETTINGS_MODULE: tests.settings
-      - name: Run tests with migrations
-        run: python -m pytest --migrations
+      - name: Run tests without migrations
+        run: python -m pytest --no-migrations
         env:
           POSTGRES_DB: audit_log
           POSTGRES_USER: audit_log
