@@ -2,6 +2,7 @@
 
 import audit_log.fields
 from django.db import migrations, models
+from audit_log.db.migrations.operations import RemoveAuditLogging
 
 
 class Migration(migrations.Migration):
@@ -27,4 +28,5 @@ class Migration(migrations.Migration):
                 'abstract': False,
             },
         ),
+	RemoveAuditLogging(model='MyNoLongerManuallyAuditLoggedModel'),
     ]

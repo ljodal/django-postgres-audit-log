@@ -3,8 +3,10 @@ Various helpers.
 """
 
 from functools import lru_cache
-from typing import Sequence, Type
+from typing import List, Sequence, Type
 
+from django.apps import apps
+from django.conf import settings
 from django.db.backends.postgresql.base import (
     DatabaseWrapper as PostgreSQLDatabaseWrapper,
 )
@@ -280,7 +282,7 @@ def drop_triggers_sql(*, audit_logged_model: Type[Model]) -> Sequence[str]:
     )
 
 
-def create_content_type(*, audit_logged_model: Type[Model]) -> str:
+def create_content_type_sql(*, audit_logged_model: Type[Model]) -> str:
     """
     Generate the SQL required to ensure the ContentType object exists for the
     given model. We eagerly create this as it's used by the trigger and we don't
@@ -311,3 +313,46 @@ def has_audit_logs_field(model: Type[Model]) -> bool:
     """
 
     return any(is_audit_logs_field(field) for field in model._meta.local_fields)
+
+
+def get_context_model(_apps=None) -> Type[Model]:
+    app_label, model_name = settings.AUDIT_LOG_CONTEXT_MODEL.rsplit(".", 1)
+    return (_apps or apps).get_model(app_label, model_name)
+
+
+def get_log_entry_model(_apps=None) -> Type[Model]:
+    app_label, model_name = settings.AUDIT_LOG_ENTRY_MODEL.rsplit(".", 1)
+    return (_apps or apps).get_model(app_label, model_name)
+
+
+def add_audit_logging_sql(
+    *,
+    audit_logged_model: Type[Model],
+    context_model: Type[Model],
+    log_entry_model: Type[Model],
+) -> List[str]:
+
+    sql = []
+
+    sql.append(
+        create_trigger_function_sql(
+            audit_logged_model=audit_logged_model,
+            context_model=context_model,
+            log_entry_model=log_entry_model,
+        )
+    )
+    sql.extend(create_triggers_sql(audit_logged_model=audit_logged_model))
+
+    # Make sure the ContentType object exists for the model, as we need that
+    # for the trigger.
+    sql.append(create_content_type_sql(audit_logged_model=audit_logged_model))
+
+    return sql
+
+
+def remove_audit_logging_sql(*, audit_logged_model: Type[Model]) -> List[str]:
+
+    sql: List[str] = []
+    sql.extend(drop_triggers_sql(audit_logged_model=audit_logged_model))
+    sql.append(drop_trigger_function_sql(audit_logged_model=audit_logged_model))
+    return sql

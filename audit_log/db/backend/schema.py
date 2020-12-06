@@ -3,13 +3,10 @@ This defines a custom SchemaEditor class with some extensions.
 """
 from typing import Any, Type
 
-from django.apps import apps
-from django.conf import settings
 from django.db.backends.postgresql.schema import (
     DatabaseSchemaEditor as PostgreSQLSchemaEditor,
 )
 from django.db.models import Field, Model
-from django.utils.module_loading import import_string
 
 from ... import utils
 
@@ -25,13 +22,8 @@ class SchemaEditor(PostgreSQLSchemaEditor):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
-        app_label, model_name = settings.AUDIT_LOG_CONTEXT_MODEL.rsplit(".", 1)
-        self._context_model = apps.get_model(app_label, model_name)
-
-        app_label, model_name = settings.AUDIT_LOG_ENTRY_MODEL.rsplit(".", 1)
-        self._log_entry_model = apps.get_model(app_label, model_name)
-
-        self._audit_logged_model = import_string("audit_log.models.AuditLoggedModel")
+        self._context_model = utils.get_context_model()
+        self._log_entry_model = utils.get_log_entry_model()
 
     def create_model(self, model: Type[Model]) -> None:
 
@@ -68,21 +60,12 @@ class SchemaEditor(PostgreSQLSchemaEditor):
         Add audit logging triggers for class
         """
 
-        self.deferred_sql.append(
-            utils.create_trigger_function_sql(
+        self.deferred_sql.extend(
+            utils.add_audit_logging_sql(
                 audit_logged_model=audit_logged_model,
                 context_model=self._context_model,
                 log_entry_model=self._log_entry_model,
             )
-        )
-        self.deferred_sql.extend(
-            utils.create_triggers_sql(audit_logged_model=audit_logged_model)
-        )
-
-        # Make sure the ContentType object exists for the model, as we need that
-        # for the trigger.
-        self.deferred_sql.append(
-            utils.create_content_type(audit_logged_model=audit_logged_model)
         )
 
     def drop_audit_logging_triggers(self, *, audit_logged_model: Type[Model]) -> None:
@@ -91,8 +74,5 @@ class SchemaEditor(PostgreSQLSchemaEditor):
         """
 
         self.deferred_sql.extend(
-            utils.drop_triggers_sql(audit_logged_model=audit_logged_model)
-        )
-        self.deferred_sql.append(
-            utils.drop_trigger_function_sql(audit_logged_model=audit_logged_model)
+            utils.remove_audit_logging_sql(audit_logged_model=audit_logged_model)
         )

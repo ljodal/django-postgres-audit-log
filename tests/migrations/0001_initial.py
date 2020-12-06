@@ -4,6 +4,7 @@ import audit_log.fields
 from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion
+from audit_log.db.migrations.operations import AddAuditLogging
 
 
 class Migration(migrations.Migration):
@@ -68,4 +69,20 @@ class Migration(migrations.Migration):
                 'abstract': False,
             },
         ),
+        migrations.CreateModel(
+            name='MyManuallyAuditLoggedModel',
+            fields=[
+                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('some_text', models.TextField()),
+            ],
+        ),
+	AddAuditLogging(model='MyManuallyAuditLoggedModel'),
+        migrations.CreateModel(
+            name='MyNoLongerManuallyAuditLoggedModel',
+            fields=[
+                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('some_text', models.TextField()),
+            ],
+        ),
+	AddAuditLogging(model='MyNoLongerManuallyAuditLoggedModel'),
     ]

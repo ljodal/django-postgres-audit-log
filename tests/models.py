@@ -35,7 +35,7 @@ class MyAuditLoggedModel(AuditLoggedModel):
 
 class MyConvertedToAuditLoggedModel(AuditLoggedModel):
     """
-    A model that is audit logged.
+    A model where audit logging was added.
     """
 
     some_text = models.TextField()
@@ -43,7 +43,23 @@ class MyConvertedToAuditLoggedModel(AuditLoggedModel):
 
 class MyNoLongerAuditLoggedModel(models.Model):
     """
-    A model that is audit logged.
+    A model where audit logging was removed.
+    """
+
+    some_text = models.TextField()
+
+
+class MyManuallyAuditLoggedModel(models.Model):
+    """
+    A model where audit logging was added.
+    """
+
+    some_text = models.TextField()
+
+
+class MyNoLongerManuallyAuditLoggedModel(models.Model):
+    """
+    A model where audit logging was removed.
     """
 
     some_text = models.TextField()
