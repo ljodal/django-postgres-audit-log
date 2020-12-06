@@ -1,10 +1,8 @@
+from audit_log.models import AuditLoggedModel, BaseContext, BaseLogEntry
 from django.db import models
 
-from audit_log import audit_logged
-from audit_log.models import AuditLoggingBaseContext
 
-
-class AuditLoggingContext(AuditLoggingBaseContext):
+class AuditLogContext(BaseContext):
     """
     Class for storing audit logging context information
     """
@@ -13,7 +11,13 @@ class AuditLoggingContext(AuditLoggingBaseContext):
         managed = False
 
 
-class NonAuditLoggedModel(models.Model):
+class AuditLogEntry(BaseLogEntry):
+    """
+    An audit log entry
+    """
+
+
+class MyNonAuditLoggedModel(models.Model):
     """
     A model that is not audit logged
     """
@@ -21,8 +25,7 @@ class NonAuditLoggedModel(models.Model):
     some_text = models.TextField()
 
 
-@audit_logged()
-class AuditLoggedModel(models.Model):
+class MyAuditLoggedModel(AuditLoggedModel):
     """
     A model that is audit logged.
     """

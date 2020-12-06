@@ -2,18 +2,13 @@
 Various helpers.
 """
 
-import re
 from functools import lru_cache
 from typing import Sequence, Type
 
-from django.conf import settings
 from django.db.backends.postgresql.base import (
     DatabaseWrapper as PostgreSQLDatabaseWrapper,
 )
-from django.db.models import SET_NULL, AutoField, Field, ForeignKey, JSONField, Model
-from django.utils.module_loading import import_string
-
-from . import models
+from django.db.models import AutoField, Field, ForeignKey, JSONField, Model
 
 
 def _column_sql(field: Field) -> str:
@@ -84,7 +79,6 @@ def create_temporary_table_sql(model: Type[Model]) -> str:
     return sql
 
 
-@lru_cache(maxsize=4)
 def drop_temporary_table_sql(model: Type[Model]) -> str:
     """
     Generate the SQL required to drop the temporary table for the given model.
@@ -96,64 +90,18 @@ def drop_temporary_table_sql(model: Type[Model]) -> str:
     return f"DROP TABLE {model._meta.db_table}"
 
 
-def create_audit_log_model(*, for_model: Type[Model]) -> Type[models.AuditLogEntry]:
-    """
-    Dynamically create a new Django model for the given model
-    """
-
-    # Need to use _meta, so disable protected property access checks
-    # pylint: disable=protected-access
-
-    class_name = f"{for_model.__name__}AuditLog"
-    foreign_key: ForeignKey = ForeignKey(
-        for_model, related_name="audit_logs", null=True, on_delete=SET_NULL
-    )
-
-    # Convert class name from CamelCase to snake_case, regex taken from
-    # https://stackoverflow.com/a/12867228/1522350
-    field_name = re.sub(
-        r"((?<=[a-z0-9])[A-Z]|(?!^)[A-Z](?=[a-z]))", r"_\1", for_model.__name__
-    ).lower()
-
-    # Method to get the
-    get_audit_logged_model = classmethod(lambda cls: for_model)
-
-    _log_entry_base_class = import_string(settings.AUDIT_LOGGING_LOG_ENTRY_CLASS)
-
-    return type(
-        class_name,
-        (_log_entry_base_class,),
-        {
-            "__module__": for_model.__module__,
-            field_name: foreign_key,
-            "get_audit_logged_model": get_audit_logged_model,
-        },
-    )
-
-
 def create_trigger_function_sql(
     *,
-    audit_log_model: Type[Model],
     audit_logged_model: Type[Model],
     context_model: Type[Model],
+    log_entry_model: Type[Model],
 ) -> str:
     """
     Generate the SQL to create the function to log the SQL.
     """
 
-    # Need to use _meta, so disable protected property access checks
-    # pylint: disable=protected-access
-
-    # Convert class name from CamelCase to snake_case, regex taken from
-    # https://stackoverflow.com/a/12867228/1522350
-    field_name = re.sub(
-        r"((?<=[a-z0-9])[A-Z]|(?!^)[A-Z](?=[a-z]))", r"_\1", audit_logged_model.__name__
-    ).lower()
-    foreign_key_column_name = audit_log_model._meta.get_field(field_name).column
-
     trigger_function_name = f"{ audit_logged_model._meta.db_table }_log_change"
 
-    audit_log_table_name = audit_log_model._meta.db_table  # noqa
     context_table_name = context_model._meta.db_table  # noqa
     context_fields = ", ".join(
         field.column
@@ -161,26 +109,36 @@ def create_trigger_function_sql(
         if isinstance(field, Field) and not isinstance(field, AutoField)
     )
 
+    log_entry_table_name = log_entry_model._meta.db_table
+
     return f"""
         CREATE FUNCTION { trigger_function_name }()
         RETURNS TRIGGER AS $$
         DECLARE
             -- Id of the inserted row, used to ensure exactly one row is inserted
             entry_id int;
+            content_type_id int;
         BEGIN
+            SELECT id INTO STRICT content_type_id
+                FROM django_content_type WHERE
+                app_label = '{ audit_logged_model._meta.app_label }'
+                AND model = '{ audit_logged_model._meta.model_name }';
+
             IF (TG_OP = 'INSERT') THEN
-                INSERT INTO { audit_log_table_name } (
+                INSERT INTO { log_entry_table_name } (
                     { context_fields },
                     action,
                     at,
                     changes,
-                    { foreign_key_column_name }
+                    content_type_id,
+                    object_id
                 ) SELECT
                     { context_fields },
                     TG_OP as action,
                     now() as at,
                     to_jsonb(NEW.*) as changes,
-                    NEW.id as { foreign_key_column_name }
+                    content_type_id,
+                    NEW.id as object_id
                 -- We rely on this table being created by out Django middleware
                 FROM { context_table_name }
                 -- We return the id into the variable to make postgresql check
@@ -188,12 +146,13 @@ def create_trigger_function_sql(
                 RETURNING id INTO STRICT entry_id;
                 RETURN NEW;
             ELSIF (TG_OP = 'UPDATE') THEN
-                INSERT INTO { audit_log_table_name } (
+                INSERT INTO { log_entry_table_name } (
                     { context_fields },
                     action,
                     at,
                     changes,
-                    { foreign_key_column_name }
+                    content_type_id,
+                    object_id
                 ) SELECT
                     { context_fields },
                     TG_OP as action,
@@ -219,7 +178,8 @@ def create_trigger_function_sql(
                             -- Only select rows that have actually changed
                             old_row.* IS DISTINCT FROM new_row.*
                     ) as changes,
-                    NEW.id as { foreign_key_column_name }
+                    content_type_id,
+                    NEW.id as object_id
                 -- We rely on this table being created by out Django middleware
                 FROM { context_table_name }
                 -- We return the id into the variable to make postgresql check
@@ -227,18 +187,20 @@ def create_trigger_function_sql(
                 RETURNING id INTO STRICT entry_id;
                 RETURN NEW;
             ELSIF (TG_OP = 'DELETE') THEN
-                INSERT INTO { audit_log_table_name } (
+                INSERT INTO { log_entry_table_name } (
                     { context_fields },
                     action,
                     at,
                     changes,
-                    { foreign_key_column_name }
+                    content_type_id,
+                    object_id
                 ) SELECT
                     { context_fields },
                     TG_OP as action,
                     now() as at,
                     to_jsonb(OLD.*) as changes,
-                    null as { foreign_key_column_name }
+                    content_type_id,
+                    OLD.id as object_id
                 -- We rely on this table being created by out Django middleware
                 FROM { context_table_name }
                 -- We return the id into the variable to make postgresql check
@@ -267,9 +229,6 @@ def create_triggers_sql(*, audit_logged_model: Type[Model]) -> Sequence[str]:
     Create the SQL requried to set up triggers for audit logging to the given
     audit log entry model.
     """
-
-    # Need to use _meta, so disable protected property access checks
-    # pylint: disable=protected-access
 
     # Get the model that we are audit logging
     audit_logged_table = audit_logged_model._meta.db_table  # noqa
@@ -317,3 +276,20 @@ def drop_triggers_sql(*, audit_logged_model: Type[Model]) -> Sequence[str]:
         f"DROP TRIGGER log_update ON { audit_logged_table }",
         f"DROP TRIGGER log_delete ON { audit_logged_table }",
     )
+
+
+def create_content_type(*, audit_logged_model: Type[Model]) -> str:
+    """
+    Generate the SQL required to ensure the ContentType object exists for the
+    given model. We eagerly create this as it's used by the trigger and we don't
+    want to create it on demand there, which is what Django usually does.
+    """
+
+    app_label = audit_logged_model._meta.app_label
+    model_name = audit_logged_model._meta.model_name
+
+    return f"""
+    INSERT INTO django_content_type (app_label, model)
+    VALUES ('{app_label}', '{model_name}')
+    ON CONFLICT (app_label, model) DO NOTHING
+    """

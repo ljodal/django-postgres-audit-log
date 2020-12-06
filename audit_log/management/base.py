@@ -18,8 +18,8 @@ class AuditLoggedCommand(BaseCommand):
         super().__init__(*args, **kwargs)
 
         # Dynamically get the context model from settings
-        app_label, model_name = settings.AUDIT_LOGGING_CONTEXT_MODEL.rsplit(".", 1)
-        self.context_model: Type[models.AuditLoggingBaseContext] = apps.get_model(
+        app_label, model_name = settings.AUDIT_LOG_CONTEXT_MODEL.rsplit(".", 1)
+        self.context_model: Type[models.BaseContext] = apps.get_model(
             app_label=app_label, model_name=model_name
         )
 
@@ -40,9 +40,7 @@ class AuditLoggedCommand(BaseCommand):
             "Subclasses of AuditLoggedCommand must provide a handle() method"
         )
 
-    def create_context(
-        self, *args: Any, **kwargs: Any
-    ) -> models.AuditLoggingBaseContext:
+    def create_context(self, *args: Any, **kwargs: Any) -> models.BaseContext:
         """
         Create the context needed for audit logging changes made by this command.
         """

@@ -1,28 +1,7 @@
 import pytest
-from audit_log.models import AuditLogEntry
 from django.db import connection
 
-from ..models import AuditLoggedModel
-
-# pylint: disable=no-member,invalid-name
-
-
-def test_has_audit_log_defined() -> None:
-    """
-    Test that the audit logged model has an AuditLog attribute.
-    """
-
-    assert hasattr(AuditLoggedModel, "AuditLog")
-    assert issubclass(AuditLoggedModel.AuditLog, AuditLogEntry)  # type: ignore
-
-
-@pytest.mark.usefixtures("db")
-def test_can_query_audit_log_table() -> None:
-    """
-    Test that querying the audit log model works.
-    """
-
-    assert AuditLoggedModel.AuditLog.objects.count() == 0  # type: ignore
+from ..models import AuditLogEntry, MyAuditLoggedModel
 
 
 @pytest.mark.usefixtures("db", "audit_logging_context")
@@ -32,15 +11,13 @@ def test_insert_is_audit_logged() -> None:
     data, and that the insert is audit logged.
     """
 
-    AuditLog = AuditLoggedModel.AuditLog  # type: ignore
+    model = MyAuditLoggedModel.objects.create(some_text="Some text")
 
-    model = AuditLoggedModel.objects.create(some_text="Some text")
+    assert model.audit_logs.count() == 1
 
-    assert AuditLog.objects.count() == 1
-
-    log_entry = AuditLog.objects.get()
+    log_entry = model.audit_logs.get()
     assert log_entry.changes == {"id": model.id, "some_text": "Some text"}
-    assert log_entry.audit_logged_model == model
+    assert log_entry.log_object == model
 
 
 @pytest.mark.usefixtures("db", "audit_logging_context")
@@ -50,19 +27,17 @@ def test_single_model_update_is_audit_logged() -> None:
     data, and that the update is audit logged.
     """
 
-    AuditLog = AuditLoggedModel.AuditLog  # type: ignore
-
-    model = AuditLoggedModel.objects.create(some_text="Some text")
+    model = MyAuditLoggedModel.objects.create(some_text="Some text")
 
     model.some_text = "Updated text"
     model.save(update_fields=["some_text"])
 
-    assert AuditLog.objects.count() == 2
+    assert model.audit_logs.count() == 2
 
-    log_entry = AuditLog.objects.order_by("-id").first()
+    log_entry = model.audit_logs.latest("id")
     assert log_entry.action == "UPDATE"
     assert log_entry.changes == {"some_text": ["Some text", "Updated text"]}
-    assert log_entry.audit_logged_model == model
+    assert log_entry.log_object == model
 
 
 @pytest.mark.usefixtures("db", "audit_logging_context")
@@ -72,18 +47,16 @@ def test_bulk_update_is_audit_logged() -> None:
     data, and that the update is audit logged.
     """
 
-    AuditLog = AuditLoggedModel.AuditLog  # type: ignore
+    model = MyAuditLoggedModel.objects.create(some_text="Some text")
 
-    model = AuditLoggedModel.objects.create(some_text="Some text")
+    MyAuditLoggedModel.objects.filter(id=model.id).update(some_text="Updated text")
 
-    AuditLoggedModel.objects.filter(id=model.id).update(some_text="Updated text")
+    assert model.audit_logs.count() == 2
 
-    assert AuditLog.objects.count() == 2
-
-    log_entry = AuditLog.objects.order_by("-id").first()
+    log_entry = model.audit_logs.latest("id")
     assert log_entry.action == "UPDATE"
     assert log_entry.changes == {"some_text": ["Some text", "Updated text"]}
-    assert log_entry.audit_logged_model == model
+    assert log_entry.log_object == model
 
 
 @pytest.mark.usefixtures("db", "audit_logging_context")
@@ -93,22 +66,20 @@ def test_sql_update_is_audit_logged() -> None:
     data, and that the update is audit logged.
     """
 
-    AuditLog = AuditLoggedModel.AuditLog  # type: ignore
-
-    model = AuditLoggedModel.objects.create(some_text="Some text")
+    model = MyAuditLoggedModel.objects.create(some_text="Some text")
 
     with connection.cursor() as cursor:
         cursor.execute(
-            f"UPDATE {AuditLoggedModel._meta.db_table} SET some_text=%s WHERE id=%s",
+            f"UPDATE {MyAuditLoggedModel._meta.db_table} SET some_text=%s WHERE id=%s",
             ["Updated text", model.id],
         )
 
-    assert AuditLog.objects.count() == 2
+    assert model.audit_logs.count() == 2
 
-    log_entry = AuditLog.objects.order_by("-id").first()
+    log_entry = model.audit_logs.latest("id")
     assert log_entry.action == "UPDATE"
     assert log_entry.changes == {"some_text": ["Some text", "Updated text"]}
-    assert log_entry.audit_logged_model == model
+    assert log_entry.log_object == model
 
 
 @pytest.mark.usefixtures("db", "audit_logging_context")
@@ -118,19 +89,21 @@ def test_delete_is_audit_logged() -> None:
     data, and that the delete is audit logged.
     """
 
-    AuditLog = AuditLoggedModel.AuditLog  # type: ignore
+    assert AuditLogEntry.objects.count() == 0
 
-    model = AuditLoggedModel.objects.create(some_text="Some text")
+    model = MyAuditLoggedModel.objects.create(some_text="Some text")
     model_id = model.id
+
+    assert model.audit_logs.count() == 1
 
     model.delete()
 
-    assert AuditLog.objects.count() == 2
+    assert AuditLogEntry.objects.count() == 2
 
-    log_entry = AuditLog.objects.order_by("-id").first()
+    log_entry = AuditLogEntry.objects.latest("id")
     assert log_entry.action == "DELETE"
     assert log_entry.changes == {"id": model_id, "some_text": "Some text"}
-    assert log_entry.audit_logged_model is None
+    assert log_entry.log_object is None
 
 
 @pytest.mark.usefixtures("db", "audit_logging_context")
@@ -140,19 +113,17 @@ def test_bulk_delete_is_audit_logged() -> None:
     data, and that the delete is audit logged.
     """
 
-    AuditLog = AuditLoggedModel.AuditLog  # type: ignore
-
-    model = AuditLoggedModel.objects.create(some_text="Some text")
+    model = MyAuditLoggedModel.objects.create(some_text="Some text")
     model_id = model.id
 
-    AuditLoggedModel.objects.filter(id=model_id).delete()
+    MyAuditLoggedModel.objects.filter(id=model_id).delete()
 
-    assert AuditLog.objects.count() == 2
+    assert model.audit_logs.count() == 2
 
-    log_entry = AuditLog.objects.order_by("-id").first()
+    log_entry = model.audit_logs.latest("id")
     assert log_entry.action == "DELETE"
     assert log_entry.changes == {"id": model_id, "some_text": "Some text"}
-    assert log_entry.audit_logged_model is None
+    assert log_entry.log_object is None
 
 
 @pytest.mark.usefixtures("db", "audit_logging_context")
@@ -162,34 +133,20 @@ def test_sql_delete_is_audit_logged() -> None:
     data, and that the delete is audit logged.
     """
 
-    AuditLog = AuditLoggedModel.AuditLog  # type: ignore
-
-    model = AuditLoggedModel.objects.create(some_text="Some text")
+    model = MyAuditLoggedModel.objects.create(some_text="Some text")
     model_id = model.id
 
     with connection.cursor() as cursor:
-        # Django doesn't do cascading FK constraints at the DB level, so we
-        # have to manually update any audit log entries first
         cursor.execute(
-            (
-                f"UPDATE {AuditLog._meta.db_table} "
-                "SET audit_logged_model_id=null "
-                "WHERE audit_logged_model_id=%s"
-            ),
+            f"DELETE FROM {MyAuditLoggedModel._meta.db_table} WHERE id=%s",
             [model.id],
         )
 
-        # Then delete the model we want to delete
-        cursor.execute(
-            f"DELETE FROM {AuditLoggedModel._meta.db_table} WHERE id=%s",
-            [model.id],
-        )
+    MyAuditLoggedModel.objects.filter(id=model_id).delete()
 
-    AuditLoggedModel.objects.filter(id=model_id).delete()
+    assert model.audit_logs.count() == 2
 
-    assert AuditLog.objects.count() == 2
-
-    log_entry = AuditLog.objects.order_by("-id").first()
+    log_entry = model.audit_logs.latest("id")
     assert log_entry.action == "DELETE"
     assert log_entry.changes == {"id": model_id, "some_text": "Some text"}
-    assert log_entry.audit_logged_model is None
+    assert log_entry.log_object is None

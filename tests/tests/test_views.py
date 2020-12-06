@@ -4,7 +4,7 @@ import pytest
 from django.contrib.auth.models import User  # pylint: disable=imported-auth-user
 from django.test import Client
 
-from ..models import AuditLoggedModel
+from ..models import MyAuditLoggedModel
 
 
 @pytest.mark.usefixtures("db")
@@ -27,13 +27,13 @@ def test_view(django_user_model: Type[User], client: Client) -> None:
     assert isinstance(data["id"], int)
 
     # Make sure the model was created as we expected
-    model = AuditLoggedModel.objects.get(id=data["id"])
+    model = MyAuditLoggedModel.objects.get(id=data["id"])
     assert model.some_text == "bla"
 
     # Make sure it was audit logged
-    assert model.audit_logs.count() == 1  # type: ignore
+    assert model.audit_logs.count() == 1
 
-    audit_log = model.audit_logs.get()  # type: ignore
+    audit_log = model.audit_logs.get()
     assert audit_log.action == "INSERT"
     assert audit_log.context_type == "http-request"
     assert audit_log.performed_by == user

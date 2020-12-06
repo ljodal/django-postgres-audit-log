@@ -1,14 +1,18 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Mapping, Tuple, Type, cast
+from typing import Any, Mapping, Tuple, Type, cast
 
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand
 from django.db import models
 from django.http import HttpRequest
 
+from . import fields
 
-class AuditLoggingBaseContext(models.Model):
+
+class BaseContext(models.Model):
     """
     A base class for providing audit logging context.
     """
@@ -23,7 +27,7 @@ class AuditLoggingBaseContext(models.Model):
     context_type = models.CharField(
         primary_key=True,
         max_length=128,
-        choices=settings.AUDIT_LOGGING_CONTEXT_TYPE_CHOICES,
+        choices=settings.AUDIT_LOG_CONTEXT_TYPE_CHOICES,
     )
     context = models.JSONField()
 
@@ -31,13 +35,13 @@ class AuditLoggingBaseContext(models.Model):
         abstract = True
 
     @classmethod
-    def create_from_request(cls, request: HttpRequest) -> AuditLoggingBaseContext:
+    def create_from_request(cls, request: HttpRequest) -> BaseContext:
         """
         Create audit logging context from the given HTTP request object.
         """
 
         return cast(
-            AuditLoggingBaseContext,
+            BaseContext,
             cls.objects.create(
                 performed_by_id=getattr(request.user, "id", None),
                 context_type="http-request",
@@ -51,14 +55,14 @@ class AuditLoggingBaseContext(models.Model):
         *,
         command_cls: Type[BaseCommand],
         args: Tuple[Any, ...],
-        kwargs: Mapping[str, Any]
-    ) -> AuditLoggingBaseContext:
+        kwargs: Mapping[str, Any],
+    ) -> BaseContext:
         """
         Insert audit logging context data when a management command is run.
         """
 
         return cast(
-            "AuditLoggingBaseContext",
+            BaseContext,
             cls.objects.create(
                 context_type="management-command",
                 context={
@@ -76,13 +80,17 @@ class AuditLoggingBaseContext(models.Model):
         )
 
 
-class AuditLogEntry(models.Model):
+class BaseLogEntry(models.Model):
     """
     Base class for audit log entries
     """
 
-    # Define attributes that we are dynamically adding to subclasses
-    get_audit_logged_model: Callable[[], Type[models.Model]]
+    # We use a generic foreign key fron Django's contenttypes framework to
+    # identify the object that was changed.
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField(null=True)
+
+    log_object = GenericForeignKey("content_type", "object_id")
 
     # Track the user that performed the action.
     performed_by = models.ForeignKey(
@@ -93,7 +101,7 @@ class AuditLogEntry(models.Model):
     # command, or a celery task.
     context_type = models.CharField(
         max_length=128,
-        choices=settings.AUDIT_LOGGING_CONTEXT_TYPE_CHOICES,
+        choices=settings.AUDIT_LOG_CONTEXT_TYPE_CHOICES,
     )
     context = models.JSONField()
 
@@ -115,10 +123,16 @@ class AuditLogEntry(models.Model):
 
 class AuditLoggedModel(models.Model):
     """
-    Base class for audit logged model instances.
+    Base class for audit logged model instances. This doesn't add any fields,
+    but it adds a relation back to the audit log entries for this model, to
+    allow easy access.
+
+    When the custom database engine is enabled this will also pick up any
+    subclasses of this and automatically add the audit logging triggers to the
+    database.
     """
 
-    AuditLogEntry: Type[AuditLogEntry]
+    audit_logs = fields.AuditLogsField()
 
     class Meta:
         abstract = True

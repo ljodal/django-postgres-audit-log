@@ -5,7 +5,7 @@ from django.db import connection
 
 from . import models
 
-ContextModel = TypeVar("ContextModel", bound=models.AuditLoggingBaseContext)
+ContextModel = TypeVar("ContextModel", bound=models.BaseContext)
 
 
 @contextmanager

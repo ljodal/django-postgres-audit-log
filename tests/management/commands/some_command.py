@@ -2,7 +2,7 @@ from typing import Any
 
 from audit_log.management.base import AuditLoggedCommand
 
-from ...models import AuditLoggedModel
+from ...models import MyAuditLoggedModel
 
 
 class Command(AuditLoggedCommand):
@@ -15,4 +15,4 @@ class Command(AuditLoggedCommand):
         Write to an audit logged model, just to test
         """
 
-        AuditLoggedModel.objects.create(some_text="Hello command")
+        MyAuditLoggedModel.objects.create(some_text="Hello command")

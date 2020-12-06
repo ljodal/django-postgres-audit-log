@@ -1,7 +1,7 @@
 import pytest
 from django.core import management
 
-from ..models import AuditLoggedModel
+from ..models import MyAuditLoggedModel
 
 
 @pytest.mark.usefixtures("db")
@@ -10,10 +10,12 @@ def test_management_command() -> None:
     Test that calling a managment command works with audit logging.
     """
 
+    assert MyAuditLoggedModel.objects.count() == 0
+
     management.call_command("some_command", "--verbosity=1")
 
-    assert AuditLoggedModel.objects.count() == 1
-    model = AuditLoggedModel.objects.get()
+    assert MyAuditLoggedModel.objects.count() == 1
+    model = MyAuditLoggedModel.objects.get()
 
     assert model.audit_logs.count() == 1  # type: ignore
     audit_log = model.audit_logs.get()  # type: ignore

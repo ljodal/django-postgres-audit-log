@@ -3,7 +3,7 @@ from audit_log.utils import create_temporary_table_sql, drop_temporary_table_sql
 from django.conf import settings
 from django.db import connection
 
-from ..models import AuditLoggingContext
+from ..models import AuditLogContext
 
 
 @pytest.mark.usefixtures("db")
@@ -14,7 +14,7 @@ def test_temporary_table_sql() -> None:
     actually works.
     """
 
-    table_name = AuditLoggingContext._meta.db_table
+    table_name = AuditLogContext._meta.db_table
 
     with connection.cursor() as cursor:
 
@@ -22,10 +22,10 @@ def test_temporary_table_sql() -> None:
         # First create the temporary table
         #
 
-        sql = create_temporary_table_sql(AuditLoggingContext)
+        sql = create_temporary_table_sql(AuditLogContext)
 
         context_types = ", ".join(
-            f"'{ t }'" for _, t in settings.AUDIT_LOGGING_CONTEXT_TYPE_CHOICES
+            f"'{ t }'" for _, t in settings.AUDIT_LOG_CONTEXT_TYPE_CHOICES
         )
 
         assert sql == (
@@ -49,7 +49,7 @@ def test_temporary_table_sql() -> None:
         # Then drop the table
         #
 
-        sql = drop_temporary_table_sql(AuditLoggingContext)
+        sql = drop_temporary_table_sql(AuditLogContext)
 
         assert sql == f"DROP TABLE {table_name}"
 

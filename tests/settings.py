@@ -122,12 +122,35 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+    "loggers": {
+        "django.db.backends": {
+            "handlers": ["console"],
+            "propagate": True,
+            "level": "DEBUG",
+        },
+    },
+}
 
-AUDIT_LOGGING_CONTEXT_MODEL = "tests.AuditLoggingContext"
-AUDIT_LOGGING_CONTEXT_TYPE_CHOICES = (
+DEBUG = True
+
+
+AUDIT_LOG_CONTEXT_MODEL = "tests.AuditLogContext"
+AUDIT_LOG_CONTEXT_TYPE_CHOICES = (
     ("HTTP request", "http-request"),
     ("Management command", "management-command"),
     ("Celery task", "celery-task"),
     ("Test", "test"),
 )
-AUDIT_LOGGING_LOG_ENTRY_CLASS = "audit_log.models.AuditLogEntry"
+AUDIT_LOG_ENTRY_MODEL = "tests.AuditLogEntry"

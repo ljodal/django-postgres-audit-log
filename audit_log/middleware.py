@@ -17,8 +17,8 @@ class AuditLoggingMiddleware:
         self.get_response = get_response
 
         # Dynamically get the context model from settings
-        app_label, model_name = settings.AUDIT_LOGGING_CONTEXT_MODEL.rsplit(".", 1)
-        self.context_model: Type[models.AuditLoggingBaseContext] = apps.get_model(
+        app_label, model_name = settings.AUDIT_LOG_CONTEXT_MODEL.rsplit(".", 1)
+        self.context_model: Type[models.BaseContext] = apps.get_model(
             app_label=app_label, model_name=model_name
         )
 
@@ -41,7 +41,7 @@ class AuditLoggingMiddleware:
         ):
             return self.get_response(request)
 
-    def create_context(self, request: HttpRequest) -> models.AuditLoggingBaseContext:
+    def create_context(self, request: HttpRequest) -> models.BaseContext:
         """
         Create context from the given request
         """
