@@ -27,7 +27,14 @@ class BaseContext(models.Model):
     context_type = models.CharField(
         primary_key=True,
         max_length=128,
-        choices=settings.AUDIT_LOG_CONTEXT_TYPE_CHOICES,
+        choices=getattr(
+            settings,
+            "AUDIT_LOG_CONTEXT_TYPE_CHOICES",
+            (
+                ("HTTP request", "http-request"),
+                ("Management command", "management-command"),
+            ),
+        ),
     )
     context = models.JSONField()
 
