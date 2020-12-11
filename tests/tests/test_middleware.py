@@ -1,6 +1,7 @@
 from unittest import mock
 
 import pytest
+from django.http import QueryDict
 
 from audit_log.middleware import AuditLoggingMiddleware
 
@@ -16,5 +17,8 @@ def test_middleware() -> None:
 
     request = mock.Mock()
     request.user.id = 1
+    request.method = "GET"
+    request.path = "/some/path"
+    request.GET = QueryDict("a=1&b=2")
 
     middleware(request)
