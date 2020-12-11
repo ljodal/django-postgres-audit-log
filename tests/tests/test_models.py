@@ -59,7 +59,7 @@ def test_insert_is_not_audit_logged_on_removed_model() -> None:
     assert AuditLogEntry.objects.count() == 0
 
 
-@pytest.mark.usefixtures("db", "audit_logging_context")
+@pytest.mark.usefixtures("db", "audit_logging_context", "require_migrations")
 def test_insert_is_audit_logged_on_manual_model() -> None:
     """
     Test that the audit logging context manager works and that we can insert
@@ -73,7 +73,7 @@ def test_insert_is_audit_logged_on_manual_model() -> None:
     assert AuditLogEntry.objects.count() == 1
 
 
-@pytest.mark.usefixtures("db", "audit_logging_context")
+@pytest.mark.usefixtures("db", "audit_logging_context", "require_migrations")
 def test_insert_is_not_audit_logged_on_removed_manual_model() -> None:
     """
     Test that the audit logging context manager works and that we can insert

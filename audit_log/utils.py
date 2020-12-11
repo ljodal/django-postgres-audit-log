@@ -354,10 +354,6 @@ def add_audit_logging_sql(
     )
     sql.extend(create_triggers_sql(audit_logged_model=audit_logged_model))
 
-    # Make sure the ContentType object exists for the model, as we need that
-    # for the trigger.
-    sql.append(create_content_type_sql(audit_logged_model=audit_logged_model))
-
     return sql
 
 
