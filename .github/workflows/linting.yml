@@ -39,5 +39,6 @@ jobs:
        uses: kolonialno/pylint-action@v0.0.8
        with:
          github-token: ${{ secrets.GITHUB_TOKEN }}
+         paths: audit_log tests
        env:
          DJANGO_SETTINGS_MODULE: tests.settings
