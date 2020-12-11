@@ -68,6 +68,12 @@ class SchemaEditor(PostgreSQLSchemaEditor):
         for query in sql:
             self.execute(query)
 
+        # Create the content type deferred, as the table isn't properly set up
+        # when this code runs when not running migrations (ie. testing with syncdb)
+        self.deferred_sql.append(
+            utils.create_content_type_sql(audit_logged_model=audit_logged_model)
+        )
+
     def drop_audit_logging_triggers(self, *, audit_logged_model: Type[Model]) -> None:
         """
         Remove audit logging triggers for class

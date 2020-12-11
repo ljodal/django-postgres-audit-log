@@ -7,6 +7,7 @@ from textwrap import dedent
 from typing import List, Sequence, Type
 
 from django.apps import apps
+from django.apps.registry import Apps
 from django.conf import settings
 from django.db.backends.postgresql.base import (
     DatabaseWrapper as PostgreSQLDatabaseWrapper,
@@ -326,12 +327,22 @@ def has_audit_logs_field(model: Type[Model]) -> bool:
     return any(is_audit_logs_field(field) for field in model._meta.local_fields)
 
 
-def get_context_model(_apps=None) -> Type[Model]:
+def get_context_model(_apps: Apps = None) -> Type[Model]:
+    """
+    Helper to get the audit log context model, either from the specified app
+    directory or the global Django one.
+    """
+
     app_label, model_name = settings.AUDIT_LOG_CONTEXT_MODEL.rsplit(".", 1)
     return (_apps or apps).get_model(app_label, model_name)
 
 
-def get_log_entry_model(_apps=None) -> Type[Model]:
+def get_log_entry_model(_apps: Apps = None) -> Type[Model]:
+    """
+    Helper to get the audit log entry model, either from the specified app
+    directory or the global Django one.
+    """
+
     app_label, model_name = settings.AUDIT_LOG_ENTRY_MODEL.rsplit(".", 1)
     return (_apps or apps).get_model(app_label, model_name)
 
@@ -342,6 +353,9 @@ def add_audit_logging_sql(
     context_model: Type[Model],
     log_entry_model: Type[Model],
 ) -> List[str]:
+    """
+    Get the SQL required to set up audit logging for the given model.
+    """
 
     sql = []
 
@@ -354,14 +368,13 @@ def add_audit_logging_sql(
     )
     sql.extend(create_triggers_sql(audit_logged_model=audit_logged_model))
 
-    # Make sure the ContentType object exists for the model, as we need that
-    # for the trigger.
-    sql.append(create_content_type_sql(audit_logged_model=audit_logged_model))
-
     return sql
 
 
 def remove_audit_logging_sql(*, audit_logged_model: Type[Model]) -> List[str]:
+    """
+    Get the SQL required to remove audit logging for the given model.
+    """
 
     sql: List[str] = []
     sql.extend(drop_triggers_sql(audit_logged_model=audit_logged_model))
