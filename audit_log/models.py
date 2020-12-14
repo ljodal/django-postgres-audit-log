@@ -52,7 +52,13 @@ class BaseContext(models.Model):
             cls.objects.create(
                 performed_by_id=getattr(request.user, "id", None),
                 context_type="http-request",
-                context={},
+                context={
+                    "method": request.method,
+                    "path": request.path,
+                    "query_params": {
+                        key: request.GET.getlist(key) for key in request.GET
+                    },
+                },
             ),
         )
 

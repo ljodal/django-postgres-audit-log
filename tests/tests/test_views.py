@@ -18,7 +18,7 @@ def test_view(django_user_model: Type[User], client: Client) -> None:
     user.save(update_fields=["password"])
     assert client.login(username="test", password="test")
 
-    response = client.post("/my-url/", data={"value": "bla"})
+    response = client.post("/my-url/?a=1&a=2&b=3", data={"value": "bla"})
     assert response.status_code == 200
 
     data = response.json()
@@ -36,4 +36,9 @@ def test_view(django_user_model: Type[User], client: Client) -> None:
     audit_log = model.audit_logs.get()
     assert audit_log.action == "INSERT"
     assert audit_log.context_type == "http-request"
+    assert audit_log.context == {
+        "method": "POST",
+        "query_params": {"a": ["1", "2"], "b": ["3"]},
+        "path": "/my-url/",
+    }
     assert audit_log.performed_by == user
