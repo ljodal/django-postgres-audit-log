@@ -22,7 +22,7 @@ To get started auditing your models there are a few steps you need to complete:
    # settings.py
    DATABASE = {
        'DEFAULT': {
-           'engine': 'audit_log.db',
+           'engine': 'audit_log.db.backend',
            ...
         },
    }

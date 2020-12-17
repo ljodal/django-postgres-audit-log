@@ -11,6 +11,15 @@ from django.http import HttpRequest
 
 from . import fields
 
+CONTEXT_TYPE_CHOICES = getattr(
+    settings,
+    "AUDIT_LOG_CONTEXT_TYPE_CHOICES",
+    (
+        ("HTTP request", "http-request"),
+        ("Management command", "management-command"),
+    ),
+)
+
 
 class BaseContext(models.Model):
     """
@@ -27,14 +36,7 @@ class BaseContext(models.Model):
     context_type = models.CharField(
         primary_key=True,
         max_length=128,
-        choices=getattr(
-            settings,
-            "AUDIT_LOG_CONTEXT_TYPE_CHOICES",
-            (
-                ("HTTP request", "http-request"),
-                ("Management command", "management-command"),
-            ),
-        ),
+        choices=CONTEXT_TYPE_CHOICES,
     )
     context = models.JSONField()
 
@@ -114,7 +116,7 @@ class BaseLogEntry(models.Model):
     # command, or a celery task.
     context_type = models.CharField(
         max_length=128,
-        choices=settings.AUDIT_LOG_CONTEXT_TYPE_CHOICES,
+        choices=CONTEXT_TYPE_CHOICES,
     )
     context = models.JSONField()
 
